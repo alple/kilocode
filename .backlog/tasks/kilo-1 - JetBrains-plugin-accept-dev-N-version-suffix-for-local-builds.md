@@ -4,7 +4,7 @@ title: 'JetBrains plugin: accept -lux<N> version suffix for local builds'
 status: Testing
 assignee: []
 created_date: '2026-10-02 19:12'
-updated_date: '2026-10-02 19:31'
+updated_date: '2026-10-02 19:46'
 labels: []
 dependencies: []
 type: enhancement
@@ -20,6 +20,15 @@ Extend both regexes to accept an optional `-lux<N>` suffix (SemVer pre-release, 
 
 Test ZIP: `script/build-version.sh 7.1.8-lux1 --skip-signing --skip-verification`.
 <!-- SECTION:DESCRIPTION:END -->
+
+## Comments
+
+<!-- COMMENTS:BEGIN -->
+created: 2026-10-02 19:46
+---
+Test build succeeded (Java 21 via SDKMAN, JDK 25 JRE lacked a compiler on first attempt). Unsigned ZIP: `build/distributions/kilo.jetbrains-7.1.8-lux1.zip` (28M).
+---
+<!-- COMMENTS:END -->
 
 ## Final Summary
 
