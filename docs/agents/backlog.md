@@ -11,16 +11,16 @@ The tracker data does **not** live on any development branch. It lives on the `i
 Every checkout reads and writes the board through a **git worktree + symlink** (git follows the symlink, so writes land in the worktree where `issue-tracker` is checked out — commits made there never touch the feature branch):
 
 ```
-<repo>/                                  ← any development branch checked out
-├── .backlog -> .issue-tracker/.backlog  (symlink, gitignored)
-└── .issue-tracker/                      ← git worktree with issue-tracker checked out
+<repo>/                                                        ← any development branch checked out
+├── .backlog -> .kilo/worktrees/issue-tracker/.backlog         (symlink, gitignored)
+└── .kilo/worktrees/issue-tracker/                             ← git worktree with issue-tracker checked out
 ```
 
 Rules:
 
 - **Never stage, commit, or edit `.backlog/` on a development branch or in a feature PR.** Development branches end with zero `.backlog/` changes. The symlink makes the board fully readable and writable from any branch — there is no reason to touch git state for it.
 - **Board commits follow `auto_commit`** (`.backlog/config.yml` — the user flips it; backlog.md → "Board commits and pushes"): agents never push the board, and stale uncommitted board work a day or two old → **ask the user** whether to commit it.
-- **`.kilo/worktrees/` is off-limits for the tracker worktree** — it belongs to the repo's own Agent Manager worktree pool, whose recovery deletes unclaimed directories there. The tracker worktree lives at `.issue-tracker/` instead.
+- **The tracker worktree lives under `.kilo/worktrees/`** alongside the Agent Manager worktree pool. That is safe: the Agent Manager only flags/removes directories under `.kilo/worktrees/` that **no git worktree registration claims**, and the tracker worktree is a git-registered worktree (`git worktree list` shows it). `.kilo/.gitignore` (tracked) keeps `worktrees/` out of version control.
 - A broken symlink (worktree missing) fails safe: the tools report "No Backlog.md project found" — nothing is written anywhere.
 
 ### Board commits and pushes
@@ -30,7 +30,7 @@ Rules:
 - **Agents never push the board** — the `issue-tracker` branch is local to this clone by design; pushing it anywhere (e.g. to the public remote) is the user's explicit call, never an agent's.
 - **Stale uncommitted board work:** `git status` in the worktree showing board changes a day or two old → **ask the user whether to commit the outstanding tickets**; never commit or discard them unasked.
 
-Manual recipe (when `auto_commit` is off and the user asks): `git -C .issue-tracker add -A && git commit -m "tracker: <what changed>"` (run with `-C .issue-tracker`).
+Manual recipe (when `auto_commit` is off and the user asks): `git -C .kilo/worktrees/issue-tracker add -A && git commit -m "tracker: <what changed>"` (run with `-C .kilo/worktrees/issue-tracker`).
 
 **No sentinel PR is possible**: `issue-tracker` is an orphan (no history in common with development branches) — a remote would not be able to open a PR for it even if it were pushed.
 
@@ -38,10 +38,10 @@ Manual recipe (when `auto_commit` is off and the user asks): `git -C .issue-trac
 
 ```bash
 # 1. worktree holding the tracker branch
-git worktree add .issue-tracker issue-tracker
+git worktree add .kilo/worktrees/issue-tracker issue-tracker
 
 # 2. symlink the tracker data into the repo root
-ln -s .issue-tracker/.backlog .backlog
+ln -s .kilo/worktrees/issue-tracker/.backlog .backlog
 
 # 3. sanity check — the board should list tasks
 npx backlog.md task list
