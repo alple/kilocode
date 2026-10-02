@@ -4,7 +4,7 @@ title: 'JetBrains plugin: lux builds install side-by-side (separate plugin id/na
 status: Testing
 assignee: []
 created_date: '2026-10-02 19:31'
-updated_date: '2026-10-02 19:31'
+updated_date: '2026-10-02 19:46'
 labels: []
 dependencies: []
 type: enhancement
@@ -26,6 +26,15 @@ Constraint: install both side-by-side but keep exactly one enabled at a time —
 
 Test ZIP: `script/build-version.sh 7.1.8-lux1 --skip-signing --skip-verification` → install from disk alongside stable Kilo Code.
 <!-- SECTION:DESCRIPTION:END -->
+
+## Comments
+
+<!-- COMMENTS:BEGIN -->
+created: 2026-10-02 19:46
+---
+Test build succeeded; plugin.xml inside the ZIP verified: id `ai.kilocode.jetbrains.lux`, name `Kilo Code (lux)`, version `7.1.8-lux1`. Install via Settings → Plugins → ⚙ → Install Plugin from Disk…; keep only one of lux/stable enabled at a time.
+---
+<!-- COMMENTS:END -->
 
 ## Final Summary
 
