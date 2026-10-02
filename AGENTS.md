@@ -254,6 +254,20 @@ Skills (`.agents/skills/`, `.kilo/skills/`, `.kilocode/skills/`) may be overwrit
 
 Follow the repo file and note the override.
 
+## Resolve fog before build requests
+
+Before asking the user for permission to build, deploy, run, or ship anything:
+
+1. First clear up all open questions ("fog") — unanswered decisions from the current task and any earlier questions the user has not answered yet.
+2. Present the answers/decisions and get them confirmed.
+3. Only after everything is settled may you ask "may I build now?" via the question tool or in text.
+
+Never bundle a "should I build/run now?" question into a batch that still contains unanswered decisions. The build-permission question is always last.
+
+## No false choices
+
+Every option presented to the user must be a complete, standalone path to the goal. If an option only works in combination with another option, say so explicitly or fold the combination into a single option — never present a subset as a peer alternative. If options differ in total amount of work, that difference belongs in the option's description.
+
 <!-- BACKLOG.MD MCP GUIDELINES START -->
 <!-- backlog.md-instructions-version: 1.53.0 -->
 

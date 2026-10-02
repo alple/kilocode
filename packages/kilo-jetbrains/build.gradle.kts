@@ -24,10 +24,13 @@ fun port(value: String): Int {
 
 fun checked(value: String): String {
     if (value == "0.0.0-dev") return value
-    // The optional +<sha> is SemVer build metadata: it never affects release ordering (Release below
-    // parses only the part before it) and only ever comes from a local override, never from a release
-    // tag, so it cannot leak into a published version.
-    require(Regex("^[0-9]+\\.[0-9]+\\.[0-9]+(-rc\\.[0-9]+)?(\\+[0-9a-f]+)?$").matches(value)) {
+    // The optional -lux<N> pre-release marks a local "lux" build: it sorts below its base release, so
+    // it can never outrank (or shadow) a published version, and builds carrying it get the lux plugin
+    // identity (see lux below) so they install side-by-side with the published plugin. The optional
+    // +<sha> is SemVer build metadata: it never affects release ordering (Release below parses only
+    // the part before it) and only ever comes from a local override, never from a release tag, so it
+    // cannot leak into a published version.
+    require(Regex("^[0-9]+\\.[0-9]+\\.[0-9]+(-rc\\.[0-9]+)?(-lux[0-9]+)?(\\+[0-9a-f]+)?$").matches(value)) {
         "Invalid JetBrains plugin version: $value"
     }
     return value
@@ -93,6 +96,10 @@ val tag = gitTag()?.removePrefix("jetbrains/v")
 val ver = override?.let(::checked) ?: prop?.let(::checked) ?: if (release) checked(
     tag ?: error("Missing JetBrains plugin version. Publish builds must set kilo.jetbrains.version or run from a jetbrains/v<version> tag."),
 ) else checked(tag ?: "0.0.0-dev")
+
+// Versions carrying the -lux<N> suffix are local "lux" builds: they publish under a separate plugin
+// id and name so they install side-by-side with the published plugin instead of replacing it.
+val lux = Regex(".*-lux[0-9]+").matches(ver)
 
 if (release && !pinned) error(
     "kilo.cli.pinned=false is a dev-only mode and cannot be released. Set kilo.cli.pinned=true before a production/publish build."
@@ -209,8 +216,8 @@ intellijPlatform {
     pluginInstallationTarget = PluginInstallationTarget.BOTH
 
     pluginConfiguration {
-        id = "ai.kilocode.jetbrains"
-        name = "Kilo Code"
+        id = if (lux) "ai.kilocode.jetbrains.lux" else "ai.kilocode.jetbrains"
+        name = if (lux) "Kilo Code (lux)" else "Kilo Code"
         version = provider { ver }
         changeNotes = notes
 

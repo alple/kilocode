@@ -9,9 +9,13 @@ Builds the JetBrains plugin for a version without creating or validating a git t
 By default this runs a clean build, signs the ZIP, and verifies it.
 
 Version:
-  x.y.z or x.y.z-rc.n, with an optional leading v. An optional +<sha> build-metadata
-  suffix marks a local, non-release build off a dev commit (e.g. 7.0.1-rc.1+8d0c4147);
-  it never matches a jetbrains/v<version> release tag.
+  x.y.z or x.y.z-rc.n, with an optional leading v. An optional -lux<N> pre-release suffix
+  (e.g. 7.0.1-lux1) marks a local "lux" build: it sorts below its base release, so it can
+  never shadow a published version, and it builds under a separate plugin id and name
+  (ai.kilocode.jetbrains.lux / Kilo Code (lux)) so it installs side-by-side with the
+  published plugin. An optional +<sha> build-metadata suffix marks a local, non-release
+  build off a dev commit (e.g. 7.0.1-rc.1+8d0c4147); it never matches a jetbrains/v<version>
+  release tag.
 
 Options:
   --skip-signing       Build an unsigned ZIP without requiring JetBrains signing secrets.
@@ -25,6 +29,7 @@ Examples:
   $0 7.0.1-rc.1 --skip-signing --skip-verification
   $0 7.0.1 --skip-clean --skip-signing --skip-verification
   $0 7.0.1-rc.1+8d0c4147 --skip-signing --skip-verification
+  $0 7.0.1-lux1 --skip-signing --skip-verification
 EOF
 }
 
@@ -71,8 +76,8 @@ if [[ -z "$raw" ]]; then
 fi
 
 version="${raw#v}"
-if [[ ! "$version" =~ ^[0-9]+\.[0-9]+\.[0-9]+(-rc\.[0-9]+)?(\+[0-9a-f]+)?$ ]]; then
-  echo "Unsupported version '$raw'. Expected x.y.z or x.y.z-rc.n, optionally with a +<sha> suffix, for example 7.0.1, 7.0.1-rc.1, or 7.0.1-rc.1+8d0c4147." >&2
+if [[ ! "$version" =~ ^[0-9]+\.[0-9]+\.[0-9]+(-rc\.[0-9]+)?(-lux[0-9]+)?(\+[0-9a-f]+)?$ ]]; then
+  echo "Unsupported version '$raw'. Expected x.y.z or x.y.z-rc.n, optionally with a -lux<N> or +<sha> suffix, for example 7.0.1, 7.0.1-rc.1, 7.0.1-lux1, or 7.0.1-rc.1+8d0c4147." >&2
   exit 1
 fi
 
