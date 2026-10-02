@@ -1,9 +1,10 @@
 ---
 id: KILO-2
 title: 'JetBrains plugin: lux builds install side-by-side (separate plugin id/name)'
-status: To Do
+status: In Progress
 assignee: []
 created_date: '2026-10-02 19:31'
+updated_date: '2026-10-02 19:31'
 labels: []
 dependencies: []
 type: enhancement
