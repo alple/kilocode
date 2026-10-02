@@ -24,12 +24,12 @@ Test ZIP: `script/build-version.sh 7.1.8-lux1 --skip-signing --skip-verification
 ## Final Summary
 
 <!-- SECTION:FINAL_SUMMARY:BEGIN -->
-Extended the version validation to accept an optional `-dev<N>` pre-release suffix (SemVer pre-release, sorts below its base release so a dev build can never outrank a published version):
+Extended the version validation to accept an optional `-lux<N>` pre-release suffix (SemVer pre-release, sorts below its base release so a lux build can never outrank a published version):
 
-- `packages/kilo-jetbrains/build.gradle.kts`: `checked()` regex now `^[0-9]+\.[0-9]+\.[0-9]+(-rc\.[0-9]+)?(-dev[0-9]+)?(\+[0-9a-f]+)?$`.
-- `packages/kilo-jetbrains/script/build-version.sh`: same regex added; usage text and examples updated to document `-dev<N>`.
+- `packages/kilo-jetbrains/build.gradle.kts`: `checked()` regex is now `^[0-9]+\.[0-9]+\.[0-9]+(-rc\.[0-9]+)?(-lux[0-9]+)?(\+[0-9a-f]+)?$` with an updated comment.
+- `packages/kilo-jetbrains/script/build-version.sh`: same regex added; usage text and examples updated to document `-lux<N>`.
 
-Verified the regex set by matrix (valid: 7.1.8, 7.1.8-rc.1, 7.1.8-dev1, 7.1.8-dev12, 7.1.8-rc.1-dev1, 7.1.8+sha, 7.1.8-dev1+sha; invalid: 7.1.8-dev, 7.1.8-devx, 7.1.8-1.2).
+Verified the regex by matrix (valid: 7.1.8, 7.1.8-rc.1, 7.1.8-lux1, 7.1.8-lux12, 7.1.8-rc.1-lux1, 7.1.8+sha, 7.1.8-lux1+sha; invalid: 7.1.8-lux, 7.1.8-luxx, 7.1.8-dev1, 7.1.8-1.2). An earlier `-dev<N>` spelling was replaced by `-lux<N>` per user decision; no `-dev` traces remain in the touched code.
 
-Remaining: test build `script/build-version.sh 7.1.8-dev1 --skip-signing --skip-verification` (awaiting user go-ahead), then install from disk in the IDE.
+Remaining: test build `script/build-version.sh 7.1.8-lux1 --skip-signing --skip-verification` (awaiting user go-ahead), then install from disk in the IDE.
 <!-- SECTION:FINAL_SUMMARY:END -->
