@@ -212,3 +212,74 @@ When editing shared upstream files, mark Kilo-specific lines with `kilocode_chan
 Markers are NOT needed in paths that contain `kilocode` in the name (e.g. `packages/opencode/src/kilocode/`, `packages/opencode/test/kilocode/`) — these are entirely Kilo Code additions and won't conflict with upstream.
 
 For decision rules on when to keep changes inline vs. extract Kilo logic, marker placement guidance, and verification commands, load `.kilo/skills/kilocode-merge-minimizer/SKILL.md`.
+
+## Agent skills
+Load skills from: .agents/skills
+
+### Issue tracker
+
+**Source of truth: [Backlog.md](docs/agents/backlog.md) via the `backlog` MCP server (data in `.backlog/`, a symlink to the `issue-tracker` branch's worktree — setup: backlog.md → "Tracker branch").** All new issues, epics, milestones, and comments go there — via the backlog MCP tools, never hand-edited `.backlog/` files (config exception: `statuses`/`types`/`labels` in `.backlog/config.yml` are edited directly; restart the MCP server after — it caches both lists).
+
+- **Tracker data never rides development branches**: never stage, commit, or ship `.backlog/` changes in a feature PR. The board is readable/writable from any branch through the symlink; board commit/push handling (incl. stale uncommitted work): backlog.md → "Board commits and pushes". The `issue-tracker` branch is an orphan kept local to this clone — agents never push it.
+- **Overrides the skills**: "publish to `.scratch/`", `Status:` lines, wayfinder maps there → Backlog tasks instead (wayfinder maps = parent+child tasks with native `dependencies`); mapping table: `docs/agents/issue-tracker.md`. Don't "fix" the skills — upstream.
+
+### Triage labels
+
+Triage state = Backlog **statuses + labels**, not file status lines; **board statuses are not wayfinder statuses** — roles ride as labels. Labels = workflow state only — the task **type** is the only category marker; `Draft` only on the developer's explicit "draft". Full mapping (legacy roles → status+label, time-aware labels): `docs/agents/triage-labels.md`.
+
+### Task lifecycle (never auto-Done)
+
+Canonical spec: backlog.md → "Ticket flow". The gates:
+
+- **Create:** find a suitable epic (open or closed) first — found → ask attach-or-new; not found → standalone. Status explicit: current/soon → `To Do`; future/reminder or fresh report → `Backlog` (+ `needs-triage` for reports). Uncertain → ask.
+- **Spec:** speccing a `Backlog` ticket moves it to `To Do` (speccing = soon).
+- **Start:** claim (assign) + `In Progress` before any work.
+- **Finish:** → **`Testing`** + completion summary (`finalSummary` or comment) — **never `Done`** (overrides the backlog MCP task-finalization guidance; repo docs > tools/skills).
+- **`Done` is the developer's call**, per task, on explicit instruction after testing. Agents may ask; never move unilaterally, never `Testing` → `Done` automatically.
+- **Fixes after Testing:** small → same ticket (`Testing` → `In Progress`); extensive → propose a new ticket; unclear → ask.
+- **Two parents:** feature root (`epic`, carries the spec, mirrors children) vs `initiative` (specless long-running container, parked `To Do`, no mirroring, retired by hand = archived). Mirroring: parent = least-advanced child stage, capped at `Testing`; a fresh child on a `Done` root reopens it.
+- **Time-aware tickets:** `time-gated`/`recurring` tickets carry gate/recurrence lines (`docs/agents/backlog.md` → "Time-gated & recurring tickets"); an agent that reads or edits one inside its warning window or overdue flags that in the response.
+- Wayfinder decision tickets, the soft frontier, and exceptions: backlog.md → "Lifecycle".
+
+### Domain docs
+
+Single-context layout — one `GLOSSARY.md` + `docs/adr/` at the repo root. See `docs/agents/domain.md`.
+
+## Precedence (repo docs override skills)
+
+Skills (`.agents/skills/`, `.kilo/skills/`, `.kilocode/skills/`) may be overwritten or reinstalled — conveniences, **not** the source of truth. On conflict, repo files win:
+
+1. `AGENTS.md` (this file) — always loaded
+2. `docs/agents/*.md` (issue tracker, triage labels, domain docs)
+
+Follow the repo file and note the override.
+
+<!-- BACKLOG.MD MCP GUIDELINES START -->
+<!-- backlog.md-instructions-version: 1.53.0 -->
+
+<CRITICAL_INSTRUCTION>
+
+## BACKLOG WORKFLOW INSTRUCTIONS
+
+This project uses Backlog.md MCP for all task and project management activities.
+
+**CRITICAL GUIDANCE**
+
+- If your client supports MCP resources, read `backlog://workflow/overview` to understand when and how to use Backlog for this project.
+- If your client only supports tools or the above request fails, call `backlog.get_backlog_instructions()` to load the tool-oriented overview. Use the `instruction` selector when you need `task-creation`, `task-execution`, or `task-finalization`.
+
+- **First time working here?** Read the overview resource IMMEDIATELY to learn the workflow
+- **Already familiar?** You should have the overview cached ("## Backlog.md Overview (MCP)")
+- **When to read it**: BEFORE creating tasks, or when you're unsure whether to track work
+
+These guides cover:
+- Decision framework for when to create tasks
+- Search-first workflow to avoid duplicates
+- Links to detailed guides for task creation, execution, and finalization
+- MCP tools reference
+
+You MUST read the overview resource to understand the complete workflow. The information is NOT summarized here.
+
+</CRITICAL_INSTRUCTION>
+
+<!-- BACKLOG.MD MCP GUIDELINES END -->

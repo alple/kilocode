@@ -68,6 +68,10 @@ tsconfig.tsbuildinfo
 .kilocode/yarn.lock
 .kilocode/node_modules
 
+# Local tracker lives on the issue-tracker branch (worktree + symlink)
+.backlog
+.issue-tracker/
+
 # Runtime-generated per-directory TUI config (e.g. written by `PATCH /tui/config`
 # during local testing); should never be committed.
 packages/*/.kilo/tui.json
