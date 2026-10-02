@@ -1,9 +1,10 @@
 ---
 id: KILO-1
 title: 'JetBrains plugin: accept -dev<N> version suffix for local builds'
-status: To Do
+status: In Progress
 assignee: []
 created_date: '2026-10-02 19:12'
+updated_date: '2026-10-02 19:12'
 labels: []
 dependencies: []
 type: enhancement
