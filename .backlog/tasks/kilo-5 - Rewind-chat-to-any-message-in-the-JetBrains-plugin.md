@@ -1,11 +1,11 @@
 ---
 id: KILO-5
 title: Rewind chat to any message in the JetBrains plugin
-status: In Progress
+status: Testing
 assignee:
   - alek
 created_date: '2026-10-05 11:22'
-updated_date: '2026-10-05 11:58'
+updated_date: '2026-10-05 12:49'
 labels:
   - ready
 milestone: Chat rewind
@@ -42,3 +42,31 @@ Cleaning up irrelevant turns in a long chat pollutes the model context: old expe
 - [ ] #5 JetBrains plugin typecheck and tests pass on Linux with the Java 21 toolchain; new UI code follows the jetbrains-ui and jetbrains-arch skills.
 - [ ] #6 If SDK or RPC shapes change on the CLI side, regenerated artifacts are updated via the documented generate script, not hand-edited.
 <!-- AC:END -->
+
+## Final Summary
+
+<!-- SECTION:FINAL_SUMMARY:BEGIN -->
+Rewind chat to any message in the JetBrains plugin — implemented.
+
+**What changed (frontend only; CLI/RPC shapes untouched — AC #6):**
+
+AC #1 — any message:
+- Assistant text parts now carry a "Rollback to this message" button on their existing hover copy toolbar (`TextView`/`ViewFactory` gained a `rollback` callback threaded from `MessageView`; user bubbles keep theirs on the bubble toolbar).
+- New `Kilo.Session.Rollback` context-menu action (`MessageRollbackAction`) works uniformly on any message kind — user, assistant, tool-result, including tool cards and code blocks — via a `kilo.session.message` data key published by `MessageView` (now a `UiDataProvider`); `DataManager`'s ancestor merge keeps `SessionActions` resolvable from these deeper providers.
+- The restore surface (banner: count, per-file diff stats, Redo/Redo All, hint, workspace notices) already existed and satisfies AC #2.
+
+AC #3 — idle-only rewind (decided with the developer: gate ALL rollback affordances):
+- `SessionController.revert/redoTo/unrevert` now refuse while `state.isBusy()` instead of aborting the run first; the CLI's own `assertNotBusy` guard is never hit.
+- Hover-toolbar rollback buttons disable with a "wait for the current prompt" tooltip while busy/reverting (`MessageToolbar.setRollbackEnabled`, fanned out from `SessionMessageListPanel` state sync and applied to fresh views on register).
+- RevertBanner Redo/Redo All disable while busy; context-menu item hides while busy, in read-only hosts, and on queued prompts.
+
+AC #4 — no dangling state: CLI machinery unchanged; controller spot-check test covers a rollback boundary before tool calls and a compaction (marker accepted, messages hidden, compaction count preserved, next prompt still sends). `onRevertChanged` now treats any resulting revert marker as settling a pending rollback, since the CLI widens an assistant/tool boundary to the preceding user message.
+
+AC #5 — tests: controller busy-refusal tests (revert/redo/unrevert), rollback-to-any-kind round trip, tool+compaction spot check, panel tests for the disabled-while-busy affordances on both toolbars, context-menu action tests (visibility rules, per-message resolution, group order), updated bundle-parity expectations.
+
+Strings added to the base bundle only (`revert.disabled.busy`, `action.Kilo.Session.Rollback.text/.description`); locales fall back to English via resource-bundle parents and the stale-key test stays green.
+
+**Checks:** `./gradlew typecheck` green; full `:frontend:test` 4369 tests — all pass except the 2 pre-existing `TitleButtonTest` font-centering failures (verified failing on a clean tree in this environment); `:shared:test` + `:backend:test` green. Changeset added (`jetbrains-rollback-any-message.md`, kilo-code minor).
+
+Note for local runs: `~` is eCryptfs and rejects class-file names > ~143 bytes; use `./gradlew -I /tmp/kilo/jetbrains-build-dir.init.gradle.kts ...` to relocate build dirs, and JDK 21 (`~/.sdkman/candidates/java/21-tem`).
+<!-- SECTION:FINAL_SUMMARY:END -->
