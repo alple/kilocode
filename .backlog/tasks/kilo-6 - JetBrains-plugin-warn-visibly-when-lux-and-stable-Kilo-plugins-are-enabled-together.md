@@ -27,9 +27,9 @@ KILO-2 documented the constraint ("keep exactly one of lux/stable enabled at a t
 
 ## Acceptance Criteria
 <!-- AC:BEGIN -->
-- [ ] #1 #1 When a Kilo JetBrains plugin instance starts while the other identity (ai.kilocode.jetbrains vs ai.kilocode.jetbrains.lux) is also enabled in the same IDE, a user-visible warning notification names both plugins and instructs to disable one and restart — silent action-ID collision / ClassCastException breakage is never the only signal.
-- [ ] #2 #2 The guard is direction-agnostic: fires when lux coexists with enabled stable and when stable coexists with enabled lux.
-- [ ] #3 #3 No warning when exactly one Kilo plugin identity is enabled (the supported state).
-- [ ] #4 #4 Detection survives dynamic plugin load (install-from-disk while the other instance is running), not just clean startup.
-- [ ] #5 #5 JetBrains typecheck and tests pass; UI follows the jetbrains-ui skill (notification via existing Kilo notification group, strings in the base bundle).
+- [ ] #1 #1 When a Kilo plugin identity starts (or is dynamically loaded) while the other identity is also enabled, the other identity is auto-disabled and a notification names both plugins with a Restart action — silent action-ID collision / ClassCastException breakage never happens.
+- [ ] #2 #2 The guard is direction-agnostic: disables enabled stable when lux starts, and enabled lux when stable starts.
+- [ ] #3 #3 No action when exactly one Kilo plugin identity is enabled (the supported state), and none for same-plugin-id replacement (lux1 → lux2 in-place upgrade).
+- [ ] #4 #4 Disabling persists (disabled_plugins.txt) and the notification explains how to re-enable manually.
+- [ ] #5 #5 JetBrains typecheck and tests pass; detection covers both clean startup and dynamic install-from-disk; strings in the base bundle; notification follows the jetbrains-ui skill.
 <!-- AC:END -->
