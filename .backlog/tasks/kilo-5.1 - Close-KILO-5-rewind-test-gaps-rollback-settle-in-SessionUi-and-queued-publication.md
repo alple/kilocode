@@ -3,9 +3,10 @@ id: KILO-5.1
 title: >-
   Close KILO-5 rewind test gaps: rollback settle in SessionUi and queued
   publication
-status: To Do
+status: In Progress
 assignee: []
 created_date: '2026-10-05 13:46'
+updated_date: '2026-10-05 14:25'
 labels: []
 milestone: Chat rewind
 dependencies: []
