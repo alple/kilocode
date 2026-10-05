@@ -1,9 +1,11 @@
 ---
 id: KILO-5
 title: Rewind chat to any message in the JetBrains plugin
-status: To Do
-assignee: []
+status: In Progress
+assignee:
+  - alek
 created_date: '2026-10-05 11:22'
+updated_date: '2026-10-05 11:58'
 labels:
   - ready
 milestone: Chat rewind
