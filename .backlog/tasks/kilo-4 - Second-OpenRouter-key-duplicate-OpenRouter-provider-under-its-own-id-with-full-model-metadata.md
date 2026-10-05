@@ -6,6 +6,7 @@ title: >-
 status: To Do
 assignee: []
 created_date: '2026-10-05 10:11'
+updated_date: '2026-10-05 10:15'
 labels: []
 dependencies: []
 type: enhancement
@@ -17,19 +18,19 @@ ordinal: 4000
 <!-- SECTION:DESCRIPTION:BEGIN -->
 User has two OpenRouter accounts/keys but the Settings UI only allows configuring one OpenRouter provider. A manually-added custom provider (custom URL) loses OpenRouter's model metadata — models don't recognize image input and are otherwise limited — because a config entry for an unknown id gets no models.dev catalog entry, so every model must be hand-declared without modalities.
 
+DECISION LOCKED (user confirmed): Option A — hardcoded duplicate provider. Clone the models.dev `openrouter` catalog entry under a second id (`openrouter-private`, display name "OpenRouter Private") at catalog-load time, implemented in a Kilo-owned path (packages/opencode/src/kilocode/provider/) so no shared upstream files are edited. Option B (generic cloneOf config key) was rejected: touches upstream-shared config schema, more merge surface than the user wants.
+
 Facts from codebase research:
 - The OpenRouter model metadata comes from the models.dev catalog entry for id `openrouter` (packages/core/src/models-dev.ts), loaded at runtime; the npm SDK `@openrouter/ai-sdk-provider` is bundled (packages/opencode/src/provider/provider.ts BUNDLED_PROVIDERS).
-- Provider id is NOT used for API routing (endpoint/key come from api + options.baseURL/options.apiKey); it only affects display and a few id-keyed patches (custom loader injecting HTTP-Referer/X-Title headers for id `openrouter`, OpenRouter plugin header/alias patch, alias-model deletion for ids openai/github-copilot/openrouter).
-- Config `provider` is a record keyed by arbitrary string (packages/core/src/v1/config/config.ts), and mergeProvider merges by exact id only — so a second id like `openrouter-private` is technically possible but gets no catalog models today.
+- Provider id is NOT used for API routing (endpoint/key come from api + options.baseURL/options.apiKey); it only affects display and a few id-keyed patches (custom loader injecting HTTP-Referer/X-Title headers for id `openrouter`, OpenRouter plugin header/alias patch, alias-model deletion for ids openai/github-copilot/openrouter). Those id-keyed patches will NOT fire for the clone id — verify header-injection parity in implementation (the clone should behave like real OpenRouter toward the API).
+- Config `provider` is a record keyed by arbitrary string (packages/core/src/v1/config/config.ts), and mergeProvider merges by exact id only — so a second id merges cleanly without dedup.
+- Plain config entry with hand-declared models is NOT sufficient — that is exactly what the user tried and it lost modalities/image support.
 
-DESIGN DECISION TO LOCK BEFORE IMPLEMENTATION (user lean: hardcoded duplicate; agent assessment: not the only option):
-- Option A — hardcoded duplicate provider: clone the models.dev `openrouter` catalog entry under a second id (e.g. `openrouter-private`) at catalog-load time, implemented in a Kilo-owned path (e.g. packages/opencode/src/kilocode/provider/) to minimize upstream conflicts. Gives full metadata automatically and appears in Settings/connect flows and the auth-store login flow (key storage: auth store, keyed by provider id — user's chosen location). Downside: fixed name, only helps OpenRouter users of this fork.
-- Option B — generic "clone provider" config key (e.g. provider entry with a `cloneOf`/`extends` reference): generalizes to any provider, but touches the upstream-shared config schema (packages/core/src/v1/config/provider.ts) and needs kilocode_change markers; more work.
-- Note: plain config entry with hand-declared models is NOT sufficient — that is exactly what the user tried and it lost modalities/image support.
-
-User's chosen key storage: auth store entry (auth.json, keyed by provider id, packages/opencode/src/auth/index.ts). Verify the connect/login flow accepts the new id (it should if the provider appears in the provider list).
-
-Naming: display name "OpenRouter Private" (or similar) so the two are distinguishable in the picker.
+Implementation outline:
+1. In a Kilo-owned module, after catalog load, clone the `openrouter` entry to id `openrouter-private` (name "OpenRouter Private", same models/npm/api).
+2. Ensure the clone appears in the provider list the JetBrains plugin and model finder consume (including the id-keyed alias-deletion and header behaviors — extend the openrouter-specific patches to the clone id, marked kilocode_change in the shared switch sites, or routed via the Kilo-owned patch function patchCustomLoaderResult which already keys on id lists).
+3. Key storage: auth store entry (auth.json, keyed by provider id, packages/opencode/src/auth/index.ts) via the normal connect/login flow — user's chosen location. Verify the login flow accepts the new id.
+4. Verify in JetBrains plugin: full model catalog with modalities/image support, simultaneous use of both providers in one session without collisions.
 <!-- SECTION:DESCRIPTION:END -->
 
 ## Acceptance Criteria
