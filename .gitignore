@@ -78,3 +78,6 @@ packages/*/.kilo/tui.jsonc
 # Test Artifacts
 packages/app/.artifacts/
 packages/opencode/.artifacts/
+
+# Local lux build artifacts dropped at the root by packages/kilo-jetbrains/script/build-lux.sh
+/kilo.jetbrains-*.zip

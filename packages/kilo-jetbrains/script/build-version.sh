@@ -139,10 +139,23 @@ else
   ./gradlew verifyPlugin -Pproduction=true -Pkilo.version="$version" -Pkilo.channel=eap
 fi
 
+# Machine-local init scripts may relocate buildDir (e.g. eCryptfs homes redirect it to /tmp),
+# so locate the produced ZIP across both the real build/ and the relocated root.
+zipfile() {
+  local pattern="$1" hit
+  hit="$(find /tmp/kilo/jetbrains-build "$plugin/build" -type f -name "$pattern" 2>/dev/null | sort | head -1 || true)"
+  if [[ -n "$hit" ]]; then
+    ls -lh "$hit"
+  else
+    echo "No ZIP matching $pattern was produced." >&2
+    exit 1
+  fi
+}
+
 if [[ "$sign" == "1" ]]; then
   printf '\nSigned JetBrains plugin ZIP:\n'
-  ls -lh build/distributions/*-signed.zip
+  zipfile "*-signed.zip"
 else
   printf '\nUnsigned JetBrains plugin ZIP:\n'
-  ls -lh build/distributions/*.zip
+  zipfile "*-${version}.zip"
 fi
