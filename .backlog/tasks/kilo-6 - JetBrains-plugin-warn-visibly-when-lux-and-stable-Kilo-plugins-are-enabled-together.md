@@ -3,10 +3,10 @@ id: KILO-6
 title: >-
   JetBrains plugin: warn visibly when lux and stable Kilo plugins are enabled
   together
-status: In Progress
+status: Testing
 assignee: []
 created_date: '2026-10-05 15:40'
-updated_date: '2026-10-05 16:33'
+updated_date: '2026-10-05 17:05'
 labels: []
 dependencies: []
 type: enhancement
@@ -27,9 +27,31 @@ KILO-2 documented the constraint ("keep exactly one of lux/stable enabled at a t
 
 ## Acceptance Criteria
 <!-- AC:BEGIN -->
-- [ ] #1 #1 When a Kilo plugin identity starts (or is dynamically loaded) while the other identity is also enabled, the other identity is auto-disabled and a notification names both plugins with a Restart action — silent action-ID collision / ClassCastException breakage never happens.
-- [ ] #2 #2 The guard is direction-agnostic: disables enabled stable when lux starts, and enabled lux when stable starts.
-- [ ] #3 #3 No action when exactly one Kilo plugin identity is enabled (the supported state), and none for same-plugin-id replacement (lux1 → lux2 in-place upgrade).
-- [ ] #4 #4 Disabling persists (disabled_plugins.txt) and the notification explains how to re-enable manually.
-- [ ] #5 #5 JetBrains typecheck and tests pass; detection covers both clean startup and dynamic install-from-disk; strings in the base bundle; notification follows the jetbrains-ui skill.
+- [x] #1 #1 When a Kilo plugin identity starts (or is dynamically loaded) while the other identity is also enabled, the other identity is auto-disabled and a notification names both plugins with a Restart action — silent action-ID collision / ClassCastException breakage never happens.
+- [x] #2 #2 The guard is direction-agnostic: disables enabled stable when lux starts, and enabled lux when stable starts.
+- [x] #3 #3 No action when exactly one Kilo plugin identity is enabled (the supported state), and none for same-plugin-id replacement (lux1 → lux2 in-place upgrade).
+- [x] #4 #4 Disabling persists (disabled_plugins.txt) and the notification explains how to re-enable manually.
+- [x] #5 #5 JetBrains typecheck and tests pass; detection covers both clean startup and dynamic install-from-disk; strings in the base bundle; notification follows the jetbrains-ui skill.
 <!-- AC:END -->
+
+## Implementation Notes
+
+<!-- SECTION:NOTES:BEGIN -->
+Implemented 2026-10-05.
+
+Core: shared `KiloPlugin` now resolves the build's real identity from the classloader that loaded it (`own`, `ownId`, `ownIdentity`) — lux builds no longer resolve the stable id constant. Both dynamic plugin listeners switched to `ownId`, which also fixes a latent bug where lux builds skipped their own unload cleanup.
+
+Guard (frontend module, `ai.kilocode.client.plugin`):
+- `KiloPluginConflictGuard` — decision core: `conflict()` finds the enabled Kilo identity other than our own; `blocks()` decides whether a dynamic load must be refused (own-id loads and in-place upgrades of the other identity, tracked via `markUpdating` from `beforePluginUnload(isUpdate=true)`, are not conflicts); `enforce()` persists the disable via `PluginManagerCore.disablePlugin` (disabled_plugins.txt) and shows one warning notification naming both plugins with a Restart IDE action.
+- `KiloConflictVetoer` (EP `com.intellij.ide.dynamicPluginVetoer`) vetoes the other identity's dynamic load so it never gets a second classloader — this is the load-cancelling hook the platform offers; `vetoPluginLoad` is marked @ApiStatus.Internal upstream, flagged here per the arch skill's rule.
+- `KiloConflictStartupActivity` (postStartupActivity) disables an identity found enabled at startup and notifies.
+- Fail-safe: if the own identity cannot be positively resolved as a Kilo id (tests, tools), the guard does nothing — asserted by tests.
+
+Both-endpoints-enabled startup disables both (each side acts on the other); after restart exactly one can be re-enabled manually (Settings | Plugins), as the notification explains.
+
+Scope note: the guard runs in the frontend module — it covers the IDE process where actions register (the KILO-5 incident was local-IDE, both identities in one process). A remote-dev *host* with both identities installed is not covered; revisit only if that setup proves real.
+
+Out of scope (kept per ticket): auto-uninstall of the other identity.
+
+Checks: `./gradlew typecheck` green; full test suite green except pre-existing `TitleButtonTest` failures that reproduce identically on clean HEAD (environment-dependent, unrelated). Detekt: all new files clean (detekt itself has many pre-existing failures in untouched files and is not a CI gate — test-jetbrains workflow runs tests only).
+<!-- SECTION:NOTES:END -->
