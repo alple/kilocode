@@ -1,10 +1,10 @@
 ---
 id: KILO-5.2
 title: Allow rollback while the session waits for user input (question or permission)
-status: To Do
+status: In Progress
 assignee: []
 created_date: '2026-10-05 15:57'
-updated_date: '2026-10-05 15:57'
+updated_date: '2026-10-05 16:00'
 labels: []
 dependencies: []
 parent_task_id: KILO-5
