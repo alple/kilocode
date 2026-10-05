@@ -311,7 +311,7 @@ class SessionUi(
 
     override val forkable: Boolean get() = forkSurface && controller.id != null
 
-    override val rewindable: Boolean get() = !controller.model.state.isBusy()
+    override val rewindable: Boolean get() = controller.model.state.isRewindable()
 
     /**
      * Whether this session could own a board at all: enabled in config (Swarm is on unless config

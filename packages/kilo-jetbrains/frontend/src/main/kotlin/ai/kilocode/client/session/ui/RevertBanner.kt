@@ -162,15 +162,16 @@ class RevertBanner(
     }
 
     /**
-     * Sync the banner with the session state. Redo is a rewind sibling and stays idle-only: while a
-     * prompt runs (or a revert is in flight) the actions are disabled, and a revert additionally
-     * swaps the actions for the in-flight progress row.
+     * Sync the banner with the session state. Redo is a rewind sibling: while the session works — a
+     * running prompt or a revert in flight — the actions are disabled, while a waiting turn (pending
+     * question or permission) keeps them enabled, and a revert additionally swaps the actions for
+     * the in-flight progress row.
      */
     @RequiresEdt
     fun setReverting(state: SessionState) {
         val reverting = state is SessionState.Reverting
-        setActionEnabled("redo", !state.isBusy())
-        setActionEnabled("all", !state.isBusy())
+        setActionEnabled("redo", state.isRewindable())
+        setActionEnabled("all", state.isRewindable())
         if (!reverting) {
             restoreLeftAction()
             return

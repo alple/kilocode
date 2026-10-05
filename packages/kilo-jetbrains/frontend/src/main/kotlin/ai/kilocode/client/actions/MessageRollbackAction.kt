@@ -14,7 +14,8 @@ import com.intellij.openapi.project.DumbAware
  * This is the per-message rollback affordance that works on any message kind — user, assistant, or
  * tool-result — including tool cards and code blocks that have no hover toolbar. Hidden where it
  * does not apply: outside a message, on queued prompts, in read-only hosts, and while a prompt is
- * running (rewind is idle-only; stop the turn explicitly first).
+ * running (rewind waits for the turn; a pending question or permission is fine — the rollback
+ * settles it first).
  */
 class MessageRollbackAction : AnAction(), DumbAware {
     override fun getActionUpdateThread(): ActionUpdateThread = ActionUpdateThread.EDT

@@ -518,9 +518,10 @@ class SessionController(
             return
         }
         if (revertOp != null) return
-        // Rewind is idle-only: a running prompt must be stopped explicitly before any part of the
-        // transcript is rolled back, so the CLI's own assertNotBusy guard is never hit through here.
-        if (model.state.isBusy()) {
+        // Rewind while working is refused: a running prompt must be stopped explicitly before any part
+        // of the transcript is rolled back. A turn paused on a question or permission rewinds after
+        // settling the pending interaction, so the CLI's own assertNotBusy guard is never hit through here.
+        if (!model.state.isRewindable()) {
             LOG.info(
                 "${ChatLogSummary.sid(id)} kind=revert refused=busy message=$message part=${part ?: "none"}",
             )
@@ -530,13 +531,18 @@ class SessionController(
             "${ChatLogSummary.sid(id)} kind=revert clicked=true message=$message " +
                 "part=${part ?: "none"}",
         )
+        val pending = pendingInteraction()
         val op = beginReverting(
             KiloBundle.message("session.status.rollingback"),
             SessionState.Reverting.Kind.ROLLBACK,
             message,
         ) ?: return
+        // Marked here rather than beside the abort in the settle: the abort's error event can arrive
+        // before a hop back onto the EDT would, and an unmarked abort reads as a cancellation we did not ask for.
+        if (pending != null) stopRequested = true
         revertJob = cs.launch {
             try {
+                if (pending != null) settle(pending, "revert", id)
                 sessions.revert(id, directory, message, part)
                 capture("Session Rollback", sessionProps(id))
                 synchronizeFromDisk(id, "revert")
@@ -668,17 +674,20 @@ class SessionController(
         assertEdt()
         val id = sid ?: return
         if (revertOp != null) return
-        // Restore is a rewind sibling and stays idle-only like revert.
-        if (model.state.isBusy()) {
+        // Restore is a rewind sibling: refused while working, settles a waiting turn like revert.
+        if (!model.state.isRewindable()) {
             LOG.info("${ChatLogSummary.sid(id)} kind=unrevert refused=busy")
             return
         }
+        val pending = pendingInteraction()
         val op = beginReverting(
             KiloBundle.message("session.status.redoing"),
             SessionState.Reverting.Kind.REDO,
         ) ?: return
+        if (pending != null) stopRequested = true
         revertJob = cs.launch {
             try {
+                if (pending != null) settle(pending, "unrevert", id)
                 sessions.unrevert(id, directory)
                 capture("Session Unrevert", sessionProps(id))
                 synchronizeFromDisk(id, "unrevert")
@@ -717,18 +726,21 @@ class SessionController(
         assertEdt()
         val id = sid ?: return
         if (revertOp != null) return
-        // Rewind is idle-only, matching revert: refuse rather than abort.
-        if (model.state.isBusy()) {
+        // Rewind while working is refused, matching revert; a waiting turn settles first.
+        if (!model.state.isRewindable()) {
             LOG.info("${ChatLogSummary.sid(id)} kind=redo refused=busy message=$message")
             return
         }
+        val pending = pendingInteraction()
         val op = beginReverting(
             KiloBundle.message("session.status.redoing"),
             SessionState.Reverting.Kind.REDO,
             message,
         ) ?: return
+        if (pending != null) stopRequested = true
         revertJob = cs.launch {
             try {
+                if (pending != null) settle(pending, "redo", id)
                 sessions.revert(id, directory, message, null)
                 synchronizeFromDisk(id, "redo")
                 edt { clearReverting(op) }
@@ -738,6 +750,38 @@ class SessionController(
                 edt { failReverting(op, e) }
             }
         }
+    }
+
+    /** The pending interaction a waiting turn must settle before a rewind can run. */
+    private sealed class Pending {
+        data class Question(val id: String) : Pending()
+        data class Permission(val id: String) : Pending()
+    }
+
+    @RequiresEdt
+    private fun pendingInteraction(): Pending? = when (val state = model.state) {
+        is SessionState.AwaitingQuestion -> Pending.Question(state.question.id)
+        is SessionState.AwaitingPermission -> Pending.Permission(state.permission.id)
+        else -> null
+    }
+
+    /** A waiting turn still holds the CLI's busy guard: settle the pending interaction, then abort
+     * the resumed turn, so the rewind's revert passes assertNotBusy. The boundary hides what the
+     * turn produced either way. Runs inside the rewind coroutine — never on the EDT. */
+    private suspend fun settle(pending: Pending, kind: String, sid: String) {
+        when (pending) {
+            is Pending.Question -> {
+                LOG.info("${ChatLogSummary.sid(sid)} kind=$kind settle=question rid=${pending.id}")
+                sessions.rejectQuestion(pending.id, directory)
+            }
+            is Pending.Permission -> {
+                LOG.info("${ChatLogSummary.sid(sid)} kind=$kind settle=permission rid=${pending.id}")
+                sessions.replyPermission(pending.id, directory, PermissionReplyDto(reply = "reject"))
+            }
+        }
+        LOG.info("${ChatLogSummary.sid(sid)} kind=$kind abort=true reason=waiting")
+        sessions.abort(sid, directory)
+        LOG.info("${ChatLogSummary.sid(sid)} kind=$kind abort=true ok=true")
     }
 
     fun redoAll() {

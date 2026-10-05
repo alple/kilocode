@@ -42,7 +42,7 @@ class TurnLifecycleTest : SessionControllerTestBase() {
         edt { m.revert("msg1") }
         flush()
 
-        assertTrue("rewind is idle-only: no abort", rpc.aborts.isEmpty())
+        assertTrue("rewind while working: no abort", rpc.aborts.isEmpty())
         assertTrue(rpc.reverts.isEmpty())
         assertFalse(m.model.state is SessionState.Reverting)
     }
@@ -78,7 +78,7 @@ class TurnLifecycleTest : SessionControllerTestBase() {
         edt { m.redo() }
         flush()
 
-        assertTrue("redo is idle-only: no abort", rpc.aborts.isEmpty())
+        assertTrue("redo while working: no abort", rpc.aborts.isEmpty())
         assertTrue(rpc.reverts.isEmpty())
     }
 

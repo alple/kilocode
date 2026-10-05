@@ -27,6 +27,9 @@ import com.intellij.openapi.actionSystem.Toggleable
 import com.intellij.openapi.actionSystem.ex.ActionUtil
 import com.intellij.openapi.application.ApplicationManager
 import com.intellij.testFramework.replaceService
+import ai.kilocode.client.session.model.Question
+import ai.kilocode.client.session.model.QuestionItem
+import ai.kilocode.client.session.model.QuestionOption
 import ai.kilocode.client.session.model.SessionState
 import org.w3c.dom.Document
 import org.w3c.dom.Element
@@ -219,6 +222,26 @@ class SessionContextMenuActionsTest : SessionUiTestBase() {
         val event = eventAt(find<TextView>(ui), StopSessionAction())
 
         assertTrue(event.presentation.isEnabled)
+    }
+
+    /** A turn paused on a pending question rewinds: the rollback item stays visible and enabled. */
+    fun `test rollback stays visible while the turn waits for input`() {
+        realDataManager()
+        rpc.history.addAll(history(1))
+        ui = newUi(id = "ses_test")
+        settle()
+        layout()
+        controller().model.setState(SessionState.AwaitingQuestion(question()))
+
+        val waiting = eventAt(find<TextView>(ui), MessageRollbackAction())
+        assertTrue(
+            "rollback must stay visible while the turn waits on a question",
+            waiting.presentation.isEnabledAndVisible,
+        )
+
+        controller().model.setState(SessionState.Busy("running"))
+        val working = eventAt(find<TextView>(ui), MessageRollbackAction())
+        assertFalse("rollback must hide while the turn streams", working.presentation.isEnabledAndVisible)
     }
 
     // ---- auto-approve ----
@@ -534,6 +557,19 @@ class SessionContextMenuActionsTest : SessionUiTestBase() {
         ActionUtil.updateAction(action, event)
         return event
     }
+
+    private fun question() = Question(
+        id = "q1",
+        items = listOf(
+            QuestionItem(
+                question = "Proceed?",
+                header = "Confirm",
+                options = listOf(QuestionOption("Yes", "Continue")),
+                multiple = false,
+                custom = true,
+            ),
+        ),
+    )
 
     private class Fake(
         override val id: String?,

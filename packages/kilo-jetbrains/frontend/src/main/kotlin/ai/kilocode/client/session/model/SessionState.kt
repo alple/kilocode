@@ -30,4 +30,13 @@ sealed class SessionState {
         is Idle, is Loading, is Error, is TurnEnded, is LoginRequired -> false
         else -> true
     }
+
+    /** A turn paused on a pending question or permission: nothing is streaming while it waits for you. */
+    fun isWaiting(): Boolean = this is AwaitingQuestion || this is AwaitingPermission
+
+    /**
+     * Whether rewind affordances may act right now. Waiting states count as rewindable — a rollback
+     * in them first settles the pending interaction; actively working states still refuse.
+     */
+    fun isRewindable(): Boolean = !isBusy() || isWaiting()
 }

@@ -112,7 +112,7 @@ class SessionCancellationTest : SessionControllerTestBase() {
         edt { assertFalse(m.canRetry()) }
     }
 
-    /** Rewind is idle-only: a busy revert is refused outright, so it cannot produce an abort to excuse. */
+    /** Rewind while working is refused outright, so it cannot produce an abort to excuse. */
     fun `test busy revert is refused instead of aborting`() {
         val (m, _, _) = prompted()
 

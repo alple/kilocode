@@ -787,6 +787,28 @@ class SessionMessageListPanelTest : BasePlatformTestCase() {
         assertEquals(KiloBundle.message("revert.message.rollback"), rollback.toolTipText)
     }
 
+    /** A turn paused on a pending question or permission is rewindable: the button stays enabled. */
+    fun `test user prompt rollback button stays enabled while waiting for input`() {
+        panel = SessionMessageListPanel(model, parent, openFile = openFile, revert = {})
+        model.upsertMessage(msg("u1", "user"))
+        model.updateContent("u1", part("p1", "u1", "text", text = "hello"))
+        val message = panel.findMessage("u1")!!
+        val toolbar = components(message).filterIsInstance<SessionCopyTarget>().single { it.copyToolbar != null }.copyToolbar as MessageToolbar
+        val rollback = components(toolbar)
+            .filterIsInstance<JButton>()
+            .first { it.toolTipText == KiloBundle.message("revert.message.rollback") }
+
+        model.setState(SessionState.AwaitingQuestion(question()))
+        assertTrue("rollback stays enabled while a question pends", rollback.isEnabled)
+        assertEquals(KiloBundle.message("revert.message.rollback"), rollback.toolTipText)
+
+        model.setState(SessionState.AwaitingPermission(permission()))
+        assertTrue("rollback stays enabled while a permission pends", rollback.isEnabled)
+
+        model.setState(SessionState.Busy("running"))
+        assertFalse(rollback.isEnabled)
+    }
+
     /** Assistant text parts carry the rollback action on their hover toolbar, like the user bubble. */
     fun `test assistant text toolbar shows rollback and is disabled while busy`() {
         panel = SessionMessageListPanel(model, parent, openFile = openFile, revert = {})
@@ -1698,6 +1720,28 @@ class SessionMessageListPanelTest : BasePlatformTestCase() {
             .first { it.text == KiloBundle.message("revert.banner.redo") }.isEnabled)
         assertTrue(components(banner).filterIsInstance<JButton>()
             .first { it.text == KiloBundle.message("revert.banner.redo.all") }.isEnabled)
+    }
+
+    /** A waiting turn (pending question or permission) keeps the banner actions enabled. */
+    fun `test rollback banner redo stays enabled while waiting for input`() {
+        val banner = RevertBanner(model, {}, {}, {})
+        model.upsertMessage(msg("u1", "user"))
+        model.upsertMessage(msg("a1", "assistant"))
+        model.upsertMessage(msg("u2", "user"))
+        model.setRevert(SessionRevertDto("u1"))
+        banner.update()
+
+        banner.setReverting(SessionState.AwaitingQuestion(question()))
+
+        assertTrue(components(banner).filterIsInstance<JButton>()
+            .first { it.text == KiloBundle.message("revert.banner.redo") }.isEnabled)
+        assertTrue(components(banner).filterIsInstance<JButton>()
+            .first { it.text == KiloBundle.message("revert.banner.redo.all") }.isEnabled)
+
+        banner.setReverting(SessionState.AwaitingPermission(permission()))
+
+        assertTrue(components(banner).filterIsInstance<JButton>()
+            .first { it.text == KiloBundle.message("revert.banner.redo") }.isEnabled)
     }
 
     fun `test rollback banner buttons invoke actions`() {

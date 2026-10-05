@@ -34,8 +34,10 @@ internal interface SessionActions {
     val forkable: Boolean
 
     /**
-     * True when the session can be rewound: no prompt is running and no revert is in flight
-     * (`SessionState.isBusy()` covers both). Rollback affordances are disabled or hidden otherwise.
+     * True when the session can be rewound: nothing is working (`SessionState.isBusy()` — no prompt
+     * running, no revert in flight) or the turn is merely paused waiting for the user (pending
+     * question or permission; the rollback settles it first). Rollback affordances are disabled or
+     * hidden otherwise.
      */
     val rewindable: Boolean
 

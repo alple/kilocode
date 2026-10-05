@@ -605,10 +605,11 @@ class SessionMessageListPanel(
     }
 
     /**
-     * Rewind affordances are idle-only: while a prompt runs (or a revert is in flight — [SessionState.isBusy]
-     * covers both) every rollback button is disabled with a wait-for-idle tooltip.
+     * Rollback buttons disable while the session works — a running prompt or a revert in flight
+     * ([SessionState.isBusy] covers both) — with a wait-for-idle tooltip. A turn paused on a pending
+     * question or permission keeps them enabled; the rollback settles that interaction first.
      */
-    private fun rewindable(state: SessionState = model.state) = !state.isBusy()
+    private fun rewindable(state: SessionState = model.state) = state.isRewindable()
 
     private fun syncRollback(state: SessionState) {
         val enabled = rewindable(state)
