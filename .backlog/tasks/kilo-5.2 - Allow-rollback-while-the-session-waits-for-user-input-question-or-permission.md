@@ -4,6 +4,7 @@ title: Allow rollback while the session waits for user input (question or permis
 status: To Do
 assignee: []
 created_date: '2026-10-05 15:57'
+updated_date: '2026-10-05 15:57'
 labels: []
 dependencies: []
 parent_task_id: KILO-5
@@ -23,3 +24,12 @@ New semantics: "waiting for the user" is rewindable; "working" is not.
 - Consequence recorded: the pending ask/permission is rejected as part of the rollback; its turn content is hidden by the revert boundary anyway.
 - Developer approved this revision 2026-10-05 (both waiting states included, per in-session grilling).
 <!-- SECTION:DESCRIPTION:END -->
+
+## Acceptance Criteria
+<!-- AC:BEGIN -->
+- [ ] #1 #1 While the session state is AwaitingQuestion or AwaitingPermission, rollback hover buttons are enabled, the right-click "Rollback to this message" item is visible, and RevertBanner redo actions are enabled.
+- [ ] #2 #2 While the state is Busy, Reverting, Retry, or Offline, all rollback affordances stay hidden/disabled as today.
+- [ ] #3 #3 Triggering rollback in a waiting state first rejects/denies the pending question or permission (or aborts the turn), waits for the settle, then performs the revert; no CLI code changes.
+- [ ] #4 #4 Spot-check: rollback while a question is pending leaves no dangling question/permission request and the next prompt continues from the boundary without part errors.
+- [ ] #5 #5 JetBrains typecheck and tests pass; controller/panel/action tests cover the waiting-state visibility and the settle-then-revert flow.
+<!-- AC:END -->
