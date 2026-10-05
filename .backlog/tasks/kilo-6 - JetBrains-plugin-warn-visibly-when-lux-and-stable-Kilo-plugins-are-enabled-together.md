@@ -3,10 +3,10 @@ id: KILO-6
 title: >-
   JetBrains plugin: warn visibly when lux and stable Kilo plugins are enabled
   together
-status: To Do
+status: In Progress
 assignee: []
 created_date: '2026-10-05 15:40'
-updated_date: '2026-10-05 16:31'
+updated_date: '2026-10-05 16:33'
 labels: []
 dependencies: []
 type: enhancement
