@@ -5,7 +5,7 @@ status: Testing
 assignee:
   - alek
 created_date: '2026-10-05 11:22'
-updated_date: '2026-10-05 12:49'
+updated_date: '2026-10-05 13:48'
 labels:
   - ready
 milestone: Chat rewind
@@ -31,6 +31,11 @@ ordinal: 5000
 
 <!-- SECTION:DESCRIPTION:BEGIN -->
 Cleaning up irrelevant turns in a long chat pollutes the model context: old experiments, dead-end explorations, and failed attempts keep eating tokens and confuse the assistant. The CLI already has the right machinery — a revert boundary set in storage (non-destructive, restorable via unrevert until the next prompt commits it) that hides messages past the boundary and drops them from the model context — but the affordances are limited: TUI /undo only rewinds to the previous user message, and the JetBrains plugin exposes revert only per answered message with no restore-surface parity. This ticket adds a first-class 'rewind chat to any message' affordance in the Kilo JetBrains plugin over the existing machinery, chosen deliberately to minimize divergence from upstream opencode (no shared revert/session code needs changing). Decisions locked with the developer: (1) semantics = existing revert machinery unchanged, including snapshot-based file restoration of the removed turns; (2) rewind boundary = any message, not just user messages; (3) primary surface = JetBrains plugin (user does not care about TUI/VS Code; other surfaces only if nearly free); (4) removed messages stay restorable until the next prompt in that session. Baseline: this work builds on the freshly merged upstream/dev state (merge commit df678b7299, fix-ups 18dfe2953a on branch my-features). Known environment noise, not this ticket's problem: 6 pre-existing CLI test failures (umask write test, 4 concurrent plugin-install tests, wakeup-tool registry test) confirmed identical at the pre-merge base, and a JetBrains Gradle failure where two long test names exceed the 255-char class-file path limit on deep checkouts.
+
+This ticket is the spec root: the description above holds the decided spec; implementation slices live in sub-tickets below (tracker rule in docs/agents/backlog.md → "Roots hold the spec; sub-tickets do the work").
+
+Sub-tickets:
+- KILO-5.1 — Close KILO-5 rewind test gaps: rollback settle in SessionUi and queued publication (covers the KILO-5 final summary "Known gaps" items 1-2 plus a manual split-mode sandbox check).
 <!-- SECTION:DESCRIPTION:END -->
 
 ## Acceptance Criteria
