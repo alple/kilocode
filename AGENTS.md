@@ -174,6 +174,11 @@ When creating or managing GitHub issues for the VS Code extension or JetBrains p
 
 Kilo CLI is a fork of [opencode](https://github.com/anomalyco/opencode).
 
+**"Upstream" terminology**: in this repo there are two things called "upstream", and they are not interchangeable:
+
+- **Kilo upstream (release sync)** — the source of this fork's own code: the Kilo release branches (`origin/main` and Kilo `main` releases). When a developer says "check for a new version from upstream", "sync upstream", or "merge upstream" about Kilo releases, they mean **this** — syncing with Kilo's `main`, never opencode.
+- **opencode upstream (fork merge)** — `anomalyco/opencode` (`upstream/dev`), referenced only in the fork-merge process below. Merging it is a deliberate, separately-scoped operation — never assume a generic "sync to upstream" request means opencode.
+
 **Very important**: when planning or coding, update shared files with OpenCode as last resort! Everything is shared code from OpenCode, except folders that contain `kilo` in the name or have a parent directory that contains `kilo` in the name. Example of kilo specific folders: `packages/opencode/src/kilocode/` and `packages/kilo-docs/`. Always look for ways to implement your feature or fix in a way that minimizes changes to shared code.
 
 ### Minimizing Merge Conflicts
