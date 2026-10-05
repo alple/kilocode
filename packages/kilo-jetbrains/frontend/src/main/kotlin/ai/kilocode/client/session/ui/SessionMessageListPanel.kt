@@ -598,9 +598,21 @@ class SessionMessageListPanel(
         syncActive(state)
         syncSettled(state)
         syncReverted()
+        syncRollback(state)
         syncReverting(state)
         anchorFooter()
         refresh()
+    }
+
+    /**
+     * Rewind affordances are idle-only: while a prompt runs (or a revert is in flight — [SessionState.isBusy]
+     * covers both) every rollback button is disabled with a wait-for-idle tooltip.
+     */
+    private fun rewindable(state: SessionState = model.state) = !state.isBusy()
+
+    private fun syncRollback(state: SessionState) {
+        val enabled = rewindable(state)
+        for (view in msgToView.values) view.setRollbackEnabled(enabled)
     }
 
     private fun syncSettled(state: SessionState = model.state) {
@@ -646,6 +658,8 @@ class SessionMessageListPanel(
         msgToTurn[msgId] = tv
         msgToView[msgId] = mv
         mv.setHiddenQuestionTool(hiddenTool)
+        // Fresh views start from the session's current state, matching the fan-out a state change does.
+        mv.setRollbackEnabled(rewindable())
     }
 
     private fun unregister(msgId: String) {

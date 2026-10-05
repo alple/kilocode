@@ -35,15 +35,16 @@ class TurnLifecycleTest : SessionControllerTestBase() {
         )
     }
 
-    fun `test revert aborts busy session before rollback`() {
+    fun `test revert is refused while busy`() {
         val (m, _, _) = prompted()
         emit(ChatEventDto.TurnOpen("ses_test"))
 
         edt { m.revert("msg1") }
         flush()
 
-        assertEquals(listOf("ses_test" to "/test"), rpc.aborts)
-        assertEquals(listOf(FakeSessionRpcApi.RevertCall("ses_test", "/test", "msg1", null)), rpc.reverts)
+        assertTrue("rewind is idle-only: no abort", rpc.aborts.isEmpty())
+        assertTrue(rpc.reverts.isEmpty())
+        assertFalse(m.model.state is SessionState.Reverting)
     }
 
     fun `test session updated applies rollback marker`() {
@@ -68,7 +69,7 @@ class TurnLifecycleTest : SessionControllerTestBase() {
         assertTrue(appRpc.telemetry.any { it.event == "Session Redo" })
     }
 
-    fun `test redo aborts busy session before partial redo`() {
+    fun `test redo is refused while busy`() {
         val (m, _, _) = prompted()
         seedRevertMessages()
         emit(ChatEventDto.SessionUpdated("ses_test", session("ses_test").copy(revert = SessionRevertDto("u1"))))
@@ -77,8 +78,8 @@ class TurnLifecycleTest : SessionControllerTestBase() {
         edt { m.redo() }
         flush()
 
-        assertEquals(listOf("ses_test" to "/test"), rpc.aborts)
-        assertEquals(listOf(FakeSessionRpcApi.RevertCall("ses_test", "/test", "u2", null)), rpc.reverts)
+        assertTrue("redo is idle-only: no abort", rpc.aborts.isEmpty())
+        assertTrue(rpc.reverts.isEmpty())
     }
 
     fun `test redo at final user message unreverts`() {
@@ -130,6 +131,24 @@ class TurnLifecycleTest : SessionControllerTestBase() {
         assertTrue(appRpc.telemetry.any { it.event == "Session Unrevert" })
     }
 
+    fun `test rollback to any message kind reaches the CLI`() {
+        val (m, _, modelEvents) = prompted()
+        seedRevertMessages()
+
+        // An assistant message (a tool-result message behaves the same: same message id boundary).
+        edt { m.revert("a1") }
+        flush()
+
+        assertEquals(listOf(FakeSessionRpcApi.RevertCall("ses_test", "/test", "a1", null)), rpc.reverts)
+        assertTrue(modelEvents.none { it.toString() == "RevertChanged a1" })
+
+        // The CLI widens the boundary to the preceding user message; the marker drives the banner.
+        emit(ChatEventDto.SessionUpdated("ses_test", session("ses_test").copy(revert = SessionRevertDto("u1"))))
+        assertEquals("u1", m.model.revert()?.messageID)
+        assertTrue(m.model.isRevertedMessage("u2"))
+        assertTrue(m.model.isRevertedMessage("a2"))
+    }
+
     fun `test rollback round trip hides and restores reverted messages`() {
         val (m, _, _) = prompted()
         seedRevertMessages()
@@ -150,6 +169,42 @@ class TurnLifecycleTest : SessionControllerTestBase() {
         assertNull(m.model.revert())
         assertFalse(m.model.isRevertedMessage("u1"))
         assertFalse(m.model.isRevertedMessage("u2"))
+    }
+
+    /**
+     * AC spot-check: a boundary before tool calls and a compaction must not leave dangling state —
+     * the CLI owns part cleanup (unchanged); the UI must accept the marker, hide what it hides, and
+     * let the next prompt through.
+     */
+    fun `test rollback before tool calls and compaction leaves no dangling state`() {
+        val (m, _, _) = prompted()
+        emit(ChatEventDto.MessageUpdated("ses_test", msg("u1", "ses_test", "user")), flush = false)
+        emit(ChatEventDto.PartUpdated("ses_test", PartDto("u1p", "ses_test", "u1", "text", text = "first ask")), flush = false)
+        emit(ChatEventDto.MessageUpdated("ses_test", msg("a1", "ses_test", "assistant")), flush = false)
+        emit(ChatEventDto.PartUpdated("ses_test", part("a1t", "ses_test", "a1", "tool", tool = "bash", state = "completed")), flush = false)
+        emit(ChatEventDto.PartUpdated("ses_test", PartDto("a1p", "ses_test", "a1", "text", text = "ran it")), flush = false)
+        emit(ChatEventDto.PartUpdated("ses_test", PartDto("cmp", "ses_test", "a1", "compaction")), flush = false)
+        emit(ChatEventDto.MessageUpdated("ses_test", msg("u2", "ses_test", "user")), flush = false)
+        emit(ChatEventDto.MessageUpdated("ses_test", msg("a2", "ses_test", "assistant")))
+        edt { m.model.markCompacted() }
+
+        edt { m.revert("u1") }
+        flush()
+        emit(ChatEventDto.SessionUpdated("ses_test", session("ses_test").copy(revert = SessionRevertDto("u1", snapshot = "snap1"))))
+
+        assertEquals("u1", m.model.revert()?.messageID)
+        assertTrue(m.model.isRevertedMessage("u1"))
+        assertTrue(m.model.isRevertedMessage("a1"))
+        assertTrue(m.model.isRevertedMessage("u2"))
+        assertTrue(m.model.isRevertedMessage("a2"))
+        assertEquals(1, m.model.compactionCount)
+
+        // The session keeps accepting prompts after a rollback that crossed a compaction.
+        rpc.prompts.clear()
+        edt { m.prompt("next") }
+        flush()
+
+        assertEquals(1, rpc.prompts.size)
     }
 
     fun `test TurnClose fires StateChanged to Idle`() {
@@ -799,25 +854,31 @@ class TurnLifecycleTest : SessionControllerTestBase() {
         assertTrue("expected Busy, was ${m.model.state}", m.model.state is SessionState.Busy)
     }
 
-    fun `test rollback while busy enters reverting and aborts`() {
+    fun `test rollback while busy is refused`() {
         val (m, _, _) = prompted()
         emit(ChatEventDto.TurnOpen("ses_test"))
-        val gate = CompletableDeferred<Unit>()
-        rpc.revertGate = gate
 
         edt { m.revert("msg1") }
         settle()
-        val state = m.model.state
-        assertTrue(state is SessionState.Reverting)
-        assertEquals(SessionState.Reverting.Kind.ROLLBACK, (state as SessionState.Reverting).kind)
-        assertEquals("msg1", state.message)
 
-        gate.complete(Unit)
+        assertFalse(m.model.state is SessionState.Reverting)
+
         flush()
 
-        assertEquals(listOf("ses_test" to "/test"), rpc.aborts)
-        assertEquals(listOf(FakeSessionRpcApi.RevertCall("ses_test", "/test", "msg1", null)), rpc.reverts)
-        assertTrue(m.model.state is SessionState.Idle)
+        assertTrue(rpc.aborts.isEmpty())
+        assertTrue(rpc.reverts.isEmpty())
+        assertTrue(m.model.state is SessionState.Busy)
+    }
+
+    fun `test unrevert is refused while busy`() {
+        val (m, _, _) = prompted()
+        emit(ChatEventDto.TurnOpen("ses_test"))
+
+        edt { m.unrevert() }
+        flush()
+
+        assertTrue(rpc.unreverts.isEmpty())
+        assertFalse(m.model.state is SessionState.Reverting)
     }
 
     fun `test revert failure surfaces error state`() {

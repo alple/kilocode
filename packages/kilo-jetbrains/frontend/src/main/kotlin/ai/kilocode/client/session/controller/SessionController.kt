@@ -517,28 +517,26 @@ class SessionController(
             )
             return
         }
-        val state = model.state
         if (revertOp != null) return
-        val busy = state.isBusy()
+        // Rewind is idle-only: a running prompt must be stopped explicitly before any part of the
+        // transcript is rolled back, so the CLI's own assertNotBusy guard is never hit through here.
+        if (model.state.isBusy()) {
+            LOG.info(
+                "${ChatLogSummary.sid(id)} kind=revert refused=busy message=$message part=${part ?: "none"}",
+            )
+            return
+        }
         LOG.info(
             "${ChatLogSummary.sid(id)} kind=revert clicked=true message=$message " +
-                "part=${part ?: "none"} busy=$busy",
+                "part=${part ?: "none"}",
         )
         val op = beginReverting(
             KiloBundle.message("session.status.rollingback"),
             SessionState.Reverting.Kind.ROLLBACK,
             message,
         ) ?: return
-        // Marked here rather than beside the abort below: the abort's error event can arrive before a
-        // hop back onto the EDT would, and an unmarked abort reads as a cancellation we did not ask for.
-        if (busy) stopRequested = true
         revertJob = cs.launch {
             try {
-                if (busy) {
-                    LOG.info("${ChatLogSummary.sid(id)} kind=revert abort=true reason=busy")
-                    sessions.abort(id, directory)
-                    LOG.info("${ChatLogSummary.sid(id)} kind=revert abort=true ok=true")
-                }
                 sessions.revert(id, directory, message, part)
                 capture("Session Rollback", sessionProps(id))
                 synchronizeFromDisk(id, "revert")
@@ -670,6 +668,11 @@ class SessionController(
         assertEdt()
         val id = sid ?: return
         if (revertOp != null) return
+        // Restore is a rewind sibling and stays idle-only like revert.
+        if (model.state.isBusy()) {
+            LOG.info("${ChatLogSummary.sid(id)} kind=unrevert refused=busy")
+            return
+        }
         val op = beginReverting(
             KiloBundle.message("session.status.redoing"),
             SessionState.Reverting.Kind.REDO,
@@ -713,22 +716,19 @@ class SessionController(
     private fun redoTo(message: String) {
         assertEdt()
         val id = sid ?: return
-        val state = model.state
         if (revertOp != null) return
-        val busy = state.isBusy()
+        // Rewind is idle-only, matching revert: refuse rather than abort.
+        if (model.state.isBusy()) {
+            LOG.info("${ChatLogSummary.sid(id)} kind=redo refused=busy message=$message")
+            return
+        }
         val op = beginReverting(
             KiloBundle.message("session.status.redoing"),
             SessionState.Reverting.Kind.REDO,
             message,
         ) ?: return
-        if (busy) stopRequested = true
         revertJob = cs.launch {
             try {
-                if (busy) {
-                    LOG.info("${ChatLogSummary.sid(id)} kind=redo abort=true reason=busy")
-                    sessions.abort(id, directory)
-                    LOG.info("${ChatLogSummary.sid(id)} kind=redo abort=true ok=true")
-                }
                 sessions.revert(id, directory, message, null)
                 synchronizeFromDisk(id, "redo")
                 edt { clearReverting(op) }

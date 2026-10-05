@@ -2,6 +2,8 @@ package ai.kilocode.client.session.views
 
 import ai.kilocode.client.session.SessionDiffOpener
 import ai.kilocode.client.session.SessionFileOpener
+import ai.kilocode.client.session.SessionMessageKeys
+import ai.kilocode.client.session.SessionMessageRef
 import ai.kilocode.client.session.model.Compaction
 import ai.kilocode.client.session.model.Content
 import ai.kilocode.client.session.model.FileAttachment
@@ -33,6 +35,8 @@ import ai.kilocode.client.ui.layout.Stack
 import ai.kilocode.rpc.dto.MessageErrorDto
 import com.intellij.icons.AllIcons
 import com.intellij.openapi.Disposable
+import com.intellij.openapi.actionSystem.DataSink
+import com.intellij.openapi.actionSystem.UiDataProvider
 import com.intellij.openapi.util.Disposer
 import com.intellij.ui.components.JBLabel
 import com.intellij.util.concurrency.annotations.RequiresEdt
@@ -76,7 +80,7 @@ class MessageView(
     private val avatarColor: (String) -> Int? = { null },
 ) : ai.kilocode.client.session.ui.SessionLayoutPanel(
     SessionUiStyle.SessionLayout.GAP,
-), Disposable, SessionEditorStyleTarget, SessionView {
+), Disposable, SessionEditorStyleTarget, SessionView, UiDataProvider {
 
     val role: String get() = msg.info.role
 
@@ -104,7 +108,16 @@ class MessageView(
     private var openDiff: SessionDiffOpener = { _, _, _ -> }
     private var sessionId: String? = null
     private var reverted = false
+    private var queued = false
     private var failure: MessageErrorView? = null
+
+    /**
+     * The message this view renders, published to session action menus so a right-click anywhere
+     * inside the message can offer per-message actions such as rollback.
+     */
+    override fun uiDataSnapshot(sink: DataSink) {
+        sink[SessionMessageKeys.MESSAGE] = SessionMessageRef(msg.info.id, queued)
+    }
 
     init {
         isOpaque = false
@@ -423,6 +436,7 @@ class MessageView(
         ViewFactory.create(
             content, openFile, openUrl, selection, repo,
             { openAttachment(msg.info.id, it) }, openDiff, sessionId,
+            rollback = revert?.let { fn -> { fn(msg.info.id) } },
             onOpenSubagent = onOpenSubagent, avatarColor = avatarColor, onPromoteBackgroundAgent = onPromoteBackgroundAgent,
         )
     }
@@ -490,7 +504,20 @@ class MessageView(
     @RequiresEdt
     fun setQueued(active: Boolean, onDelete: () -> Unit) {
         if (role != SessionUiStyle.View.Message.USER_ROLE) return
+        queued = active
         wrap?.setQueued(active, onDelete)
+    }
+
+    /**
+     * Flip the message's rollback action on/off as the session's idle state changes: the user
+     * bubble's toolbar button and the rollback buttons on this message's text parts.
+     */
+    @RequiresEdt
+    fun setRollbackEnabled(value: Boolean) {
+        wrap?.bar?.setRollbackEnabled(value)
+        for (view in parts.values) {
+            if (view is TextView) view.setRollbackEnabled(value)
+        }
     }
 
     private val promptToolbar: MessageToolbar?

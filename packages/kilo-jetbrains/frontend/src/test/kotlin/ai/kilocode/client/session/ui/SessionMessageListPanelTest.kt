@@ -762,6 +762,53 @@ class SessionMessageListPanelTest : BasePlatformTestCase() {
         assertEquals("u1", called)
     }
 
+    /**
+     * Rewind is idle-only: while a prompt runs, the rollback button stays visible but disabled with
+     * a wait-for-idle tooltip, and flips back once the turn ends.
+     */
+    fun `test user prompt rollback button is disabled while busy`() {
+        panel = SessionMessageListPanel(model, parent, openFile = openFile, revert = {})
+        model.upsertMessage(msg("u1", "user"))
+        model.updateContent("u1", part("p1", "u1", "text", text = "hello"))
+        val message = panel.findMessage("u1")!!
+        val toolbar = components(message).filterIsInstance<SessionCopyTarget>().single { it.copyToolbar != null }.copyToolbar as MessageToolbar
+        val rollback = components(toolbar)
+            .filterIsInstance<JButton>()
+            .first { it.toolTipText == KiloBundle.message("revert.message.rollback") }
+
+        model.setState(SessionState.Busy("running"))
+
+        assertFalse(rollback.isEnabled)
+        assertEquals(KiloBundle.message("revert.disabled.busy"), rollback.toolTipText)
+
+        model.setState(SessionState.Idle)
+
+        assertTrue(rollback.isEnabled)
+        assertEquals(KiloBundle.message("revert.message.rollback"), rollback.toolTipText)
+    }
+
+    /** Assistant text parts carry the rollback action on their hover toolbar, like the user bubble. */
+    fun `test assistant text toolbar shows rollback and is disabled while busy`() {
+        panel = SessionMessageListPanel(model, parent, openFile = openFile, revert = {})
+        model.upsertMessage(msg("u1", "user"))
+        model.upsertMessage(msg("a1", "assistant"))
+        model.updateContent("a1", part("p1", "a1", "text", text = "answer"))
+        val text = panel.findMessage("a1")!!.part("p1") as TextView
+        assertTrue(text.hasCopyToolbar())
+        val toolbar = text.copyToolbar as MessageToolbar
+        val rollback = components(toolbar)
+            .filterIsInstance<JButton>()
+            .first { it.toolTipText == KiloBundle.message("revert.message.rollback") }
+
+        model.setState(SessionState.Busy("running"))
+
+        assertFalse(rollback.isEnabled)
+
+        model.setState(SessionState.Idle)
+
+        assertTrue(rollback.isEnabled)
+    }
+
     fun `test rollback state shows inline prompt progress and suppresses toolbar`() {
         var cancelled = false
         panel = SessionMessageListPanel(model, parent, openFile = openFile, revert = {}, cancelRevert = { cancelled = true })
@@ -1627,6 +1674,30 @@ class SessionMessageListPanelTest : BasePlatformTestCase() {
         banner.update()
 
         assertFalse(components(banner).filterIsInstance<JButton>().first { it.text == KiloBundle.message("revert.banner.redo.all") }.isVisible)
+    }
+
+    fun `test rollback banner redo stays disabled while busy`() {
+        val banner = RevertBanner(model, {}, {}, {})
+        model.upsertMessage(msg("u1", "user"))
+        model.upsertMessage(msg("a1", "assistant"))
+        model.upsertMessage(msg("u2", "user"))
+        model.setRevert(SessionRevertDto("u1"))
+        banner.update()
+
+        banner.setReverting(SessionState.Busy("running"))
+
+        assertFalse(components(banner).filterIsInstance<JButton>()
+            .first { it.text == KiloBundle.message("revert.banner.redo") }.isEnabled)
+        assertFalse(components(banner).filterIsInstance<JButton>()
+            .first { it.text == KiloBundle.message("revert.banner.redo.all") }.isEnabled)
+        assertTrue(components(banner).filterIsInstance<RevertProgress>().isEmpty())
+
+        banner.setReverting(SessionState.Idle)
+
+        assertTrue(components(banner).filterIsInstance<JButton>()
+            .first { it.text == KiloBundle.message("revert.banner.redo") }.isEnabled)
+        assertTrue(components(banner).filterIsInstance<JButton>()
+            .first { it.text == KiloBundle.message("revert.banner.redo.all") }.isEnabled)
     }
 
     fun `test rollback banner buttons invoke actions`() {

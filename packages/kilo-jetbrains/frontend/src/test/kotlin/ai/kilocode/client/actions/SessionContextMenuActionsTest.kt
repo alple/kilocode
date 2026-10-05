@@ -5,6 +5,8 @@ import ai.kilocode.client.plugin.KiloBundle
 import ai.kilocode.client.session.SessionActions
 import ai.kilocode.client.session.SessionActionsKeys
 import ai.kilocode.client.session.SessionManager
+import ai.kilocode.client.session.SessionMessageKeys
+import ai.kilocode.client.session.SessionMessageRef
 import ai.kilocode.client.session.SessionRef
 import ai.kilocode.client.session.SessionUiTestBase
 import ai.kilocode.client.session.ui.prompt.PromptDataKeys
@@ -59,6 +61,7 @@ class SessionContextMenuActionsTest : SessionUiTestBase() {
                 "---",
                 "\$Copy",
                 "---",
+                "Kilo.Session.Rollback",
                 "Kilo.Session.CopyId",
                 "Kilo.Session.CopyShareLink",
                 "Kilo.Session.Share",
@@ -182,6 +185,29 @@ class SessionContextMenuActionsTest : SessionUiTestBase() {
         assertNotNull("PromptDataKeys.SEND must resolve from the transcript", ctx.getData(PromptDataKeys.SEND))
     }
 
+    /** The rollback menu item resolves the message under the cursor through the real provider chain. */
+    fun `test rollback resolves the message under a target deep in the transcript`() {
+        realDataManager()
+        rpc.history.addAll(history(1))
+        ui = newUi(id = "ses_test")
+        settle()
+        layout()
+
+        val ctx = DataManager.getInstance().getDataContext(find<TextView>(ui))
+        val message = ctx.getData(SessionMessageKeys.MESSAGE)
+
+        assertNotNull("message ref must resolve from inside a message", message)
+        assertEquals("hist_0", message!!.id)
+        assertFalse("history messages are not queued", message.queued)
+
+        val event = eventAt(find<TextView>(ui), MessageRollbackAction())
+
+        assertTrue(
+            "rollback must be visible for a message under the cursor in an idle session",
+            event.presentation.isEnabledAndVisible,
+        )
+    }
+
     fun `test reused stop action is enabled from the transcript while a turn runs`() {
         realDataManager()
         rpc.history.addAll(history(1))
@@ -249,6 +275,76 @@ class SessionContextMenuActionsTest : SessionUiTestBase() {
         action.actionPerformed(event)
 
         assertFalse(event.presentation.isEnabledAndVisible)
+    }
+
+    // ---- rollback ----
+
+    private fun rollbackEvent(
+        actions: SessionActions?,
+        message: SessionMessageRef?,
+    ): AnActionEvent {
+        val presentation = Presentation().apply { copyFrom(MessageRollbackAction().templatePresentation) }
+        val context = DataContext { id ->
+            when {
+                SessionActionsKeys.ACTIONS.`is`(id) -> actions
+                SessionMessageKeys.MESSAGE.`is`(id) -> message
+                else -> null
+            }
+        }
+        return AnActionEvent.createFromDataContext("", presentation, context)
+    }
+
+    fun `test rollback action rewinds to the message under the cursor`() {
+        val actions = Fake(id = "ses_test")
+        val action = MessageRollbackAction()
+        val event = rollbackEvent(actions, SessionMessageRef("msg_assistant", queued = false))
+
+        ActionUtil.updateAction(action, event)
+        assertTrue(event.presentation.isEnabledAndVisible)
+
+        action.actionPerformed(event)
+
+        assertEquals(listOf("msg_assistant"), actions.rollbacks)
+    }
+
+    fun `test rollback action hidden without a message under the cursor`() {
+        val action = MessageRollbackAction()
+
+        for (actions in listOf(Fake(id = "ses_test"), null)) {
+            val event = rollbackEvent(actions, null)
+            ActionUtil.updateAction(action, event)
+            assertFalse(event.presentation.isEnabledAndVisible)
+        }
+    }
+
+    fun `test rollback action hidden while busy or reverting`() {
+        val action = MessageRollbackAction()
+        val event = rollbackEvent(
+            Fake(id = "ses_test", rewindable = false),
+            SessionMessageRef("msg_assistant", queued = false),
+        )
+
+        ActionUtil.updateAction(action, event)
+
+        assertFalse(event.presentation.isEnabledAndVisible)
+    }
+
+    fun `test rollback action hidden for readonly hosts and queued prompts`() {
+        val action = MessageRollbackAction()
+
+        val readonly = rollbackEvent(
+            Fake(id = "ses_test", readonly = true),
+            SessionMessageRef("msg_assistant", queued = false),
+        )
+        ActionUtil.updateAction(action, readonly)
+        assertFalse(readonly.presentation.isEnabledAndVisible)
+
+        val queued = rollbackEvent(
+            Fake(id = "ses_test"),
+            SessionMessageRef("msg_queued", queued = true),
+        )
+        ActionUtil.updateAction(action, queued)
+        assertFalse(queued.presentation.isEnabledAndVisible)
     }
 
     // ---- board ----
@@ -447,6 +543,7 @@ class SessionContextMenuActionsTest : SessionUiTestBase() {
         override val git: Boolean = true,
         override val forkable: Boolean = false,
         override val board: Boolean = false,
+        override val rewindable: Boolean = true,
         auto: Boolean = false,
     ) : SessionActions {
         // Backing field rather than `override var auto`: a var would generate setAuto(Z)V and clash
@@ -454,6 +551,7 @@ class SessionContextMenuActionsTest : SessionUiTestBase() {
         private var state = auto
         override val auto: Boolean get() = state
         val autos = mutableListOf<Boolean>()
+        val rollbacks = mutableListOf<String>()
         var compares = 0
         var started = 0
         var stopped = 0
@@ -467,6 +565,10 @@ class SessionContextMenuActionsTest : SessionUiTestBase() {
 
         override fun fork() {
             forks++
+        }
+
+        override fun rollback(message: String) {
+            rollbacks.add(message)
         }
 
         override fun compare() {

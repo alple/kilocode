@@ -34,6 +34,12 @@ internal interface SessionActions {
     val forkable: Boolean
 
     /**
+     * True when the session can be rewound: no prompt is running and no revert is in flight
+     * (`SessionState.isBusy()` covers both). Rollback affordances are disabled or hidden otherwise.
+     */
+    val rewindable: Boolean
+
+    /**
      * Whether the shared agent board is available: a created, non-read-only session with
      * Kilo Swarm enabled (`shared_agent_board`, Settings > Agent Behavior; on by default).
      */
@@ -55,6 +61,9 @@ internal interface SessionActions {
 
     /** Opens the shared agent board viewer for this session. No-op when [board] is false. */
     fun showBoard()
+
+    /** Rewinds the session to the message with [message], hiding everything after it. */
+    fun rollback(message: String)
 }
 
 internal object SessionActionsKeys {

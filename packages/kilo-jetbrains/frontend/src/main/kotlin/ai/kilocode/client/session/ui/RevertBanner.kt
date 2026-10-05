@@ -161,23 +161,26 @@ class RevertBanner(
         repaint()
     }
 
+    /**
+     * Sync the banner with the session state. Redo is a rewind sibling and stays idle-only: while a
+     * prompt runs (or a revert is in flight) the actions are disabled, and a revert additionally
+     * swaps the actions for the in-flight progress row.
+     */
     @RequiresEdt
     fun setReverting(state: SessionState) {
-        val busy = state is SessionState.Reverting
-        if (busy) {
-            setActionEnabled("redo", false)
-            setActionEnabled("all", false)
-            val node = progress ?: RevertProgress(cancelAction).also {
-                it.applyStyle(SessionEditorStyle.current())
-                progress = it
-            }
-            node.setText(state.text)
-            setActionLeft(node)
+        val reverting = state is SessionState.Reverting
+        setActionEnabled("redo", !state.isBusy())
+        setActionEnabled("all", !state.isBusy())
+        if (!reverting) {
+            restoreLeftAction()
             return
         }
-        restoreLeftAction()
-        setActionEnabled("redo", true)
-        setActionEnabled("all", true)
+        val node = progress ?: RevertProgress(cancelAction).also {
+            it.applyStyle(SessionEditorStyle.current())
+            progress = it
+        }
+        node.setText(state.text)
+        setActionLeft(node)
     }
 
     override fun applyStyle(style: SessionEditorStyle) {

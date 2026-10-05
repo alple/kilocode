@@ -311,6 +311,8 @@ class SessionUi(
 
     override val forkable: Boolean get() = forkSurface && controller.id != null
 
+    override val rewindable: Boolean get() = !controller.model.state.isBusy()
+
     /**
      * Whether this session could own a board at all: enabled in config (Swarm is on unless config
      * explicitly opts out, matching the CLI's `BoardEnabled.resolve`), created, writable, a root
@@ -1015,6 +1017,11 @@ class SessionUi(
     }
 
     @RequiresEdt
+    override fun rollback(message: String) {
+        revert(message)
+    }
+
+    @RequiresEdt
     private fun redo() {
         pendingRedo = controller.model.revert()?.messageID
         pendingRollback = null
@@ -1034,7 +1041,10 @@ class SessionUi(
         syncPromptRevert()
         val rollback = pendingRollback
         if (rollback != null) {
-            if (revert?.messageID == rollback) {
+            // The CLI widens a message boundary to the preceding user message, so the marker id can
+            // differ from the clicked message (rolling back an assistant or tool message). Any
+            // resulting marker settles the pending rollback.
+            if (revert != null) {
                 pendingRollback = null
                 scroll.followBottom(true)
                 return

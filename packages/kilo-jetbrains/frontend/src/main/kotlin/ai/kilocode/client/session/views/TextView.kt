@@ -32,6 +32,9 @@ open class TextView(
     private val openUrl: (String) -> Unit = {},
     selection: SessionSelection? = null,
     code: MdCodeBlockFactory = MdCodeBlockFactory(),
+    // Rewinds the session to the message this text part belongs to; null on surfaces without a
+    // rollback affordance (user prompts keep theirs on the bubble toolbar, not the text part).
+    rollback: (() -> Unit)? = null,
 ) : PartView(), SessionCopyTarget {
 
     override val contentId: String = text.id
@@ -40,6 +43,7 @@ open class TextView(
     private var mode: CopyMode? = null
     private val toolbar = MessageToolbar(
         text = { copyText() },
+        revert = rollback,
         tooltip = KiloBundle.message("session.copy.response"),
     )
     private val placeholder = toolbar.placeholder()
@@ -87,6 +91,12 @@ open class TextView(
 
     @RequiresEdt
     fun hasCopyToolbar() = toolbar.isVisible
+
+    /** Flip the text part's rollback action on/off as the session's idle state changes. */
+    @RequiresEdt
+    fun setRollbackEnabled(value: Boolean) {
+        toolbar.setRollbackEnabled(value)
+    }
 
     @RequiresEdt
     fun copyButton(): JButton = toolbar.copyButton()

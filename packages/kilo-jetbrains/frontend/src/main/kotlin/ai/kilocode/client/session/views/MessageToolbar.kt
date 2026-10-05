@@ -18,6 +18,9 @@ internal class MessageToolbar(
     text: () -> String?,
     image: () -> BufferedImage? = { null },
     actions: List<ToolbarButtonAction> = emptyList(),
+    // The rollback action is kept out of [actions] so it can be gated on the session's idle state
+    // (revert.disabled.busy tooltip) without disabling siblings like fork or copy.
+    revert: (() -> Unit)? = null,
     tooltip: String = KiloBundle.message("session.copy.hover"),
 ) : JPanel(FlowLayout(FlowLayout.LEFT, 0, 0)) {
     /** The hover toolbar of a user prompt bubble: fork this message, roll back to it, copy it. */
@@ -25,16 +28,20 @@ internal class MessageToolbar(
         text,
         actions = listOfNotNull(
             fork?.let { ToolbarButtonAction(AllIcons.Vcs.Branch, KiloBundle.message("session.fork.message"), it) },
-            revert?.let { ToolbarButtonAction(AllIcons.Actions.Rollback, KiloBundle.message("revert.message.rollback"), it) },
         ),
+        revert = revert,
         tooltip = KiloBundle.message("session.copy.prompt"),
     )
 
+    private val rollbackText = KiloBundle.message("revert.message.rollback")
+    private val busyText = KiloBundle.message("revert.disabled.busy")
     private val copy = SessionCopyButton(text = text, image = image, tooltip = tooltip)
     private val button = copy.button
     private val buttons = actions.map(::toolbarButton)
+    private val rollback = revert?.let { toolbarButton(ToolbarButtonAction(AllIcons.Actions.Rollback, rollbackText, it)) }
     private val row = Stack.horizontal(UiStyle.Gap.xs()).apply {
         buttons.forEach { next(it) }
+        rollback?.let { next(it) }
         next(button)
     }
 
@@ -51,6 +58,20 @@ internal class MessageToolbar(
         buttons.forEach { it.isEnabled = value }
         revalidate()
         repaint()
+    }
+
+    /**
+     * Enable or disable the rollback action alone. A disabled rollback keeps its tooltip so the
+     * wait-for-idle rule is visible instead of a dead icon.
+     */
+    @RequiresEdt
+    fun setRollbackEnabled(value: Boolean) {
+        val icon = rollback ?: return
+        val tip = if (value) rollbackText else busyText
+        if (icon.isEnabled == value && icon.toolTipText == tip) return
+        icon.isEnabled = value
+        icon.toolTipText = tip
+        icon.repaint()
     }
 
     @RequiresEdt

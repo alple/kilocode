@@ -468,6 +468,9 @@
         <action id="Kilo.Session.Fork"
                 class="ai.kilocode.client.actions.ForkSessionAction"/>
 
+        <action id="Kilo.Session.Rollback"
+                class="ai.kilocode.client.actions.MessageRollbackAction"/>
+
         <action id="Kilo.Session.Board"
                 class="ai.kilocode.client.actions.ShowSessionBoardAction"/>
 
@@ -511,6 +514,7 @@
             <separator/>
             <reference ref="$Copy"/>
             <separator/>
+            <reference ref="Kilo.Session.Rollback"/>
             <reference ref="Kilo.Session.CopyId"/>
             <reference ref="Kilo.Session.CopyShareLink"/>
             <reference ref="Kilo.Session.Share"/>

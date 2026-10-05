@@ -53,6 +53,7 @@ object ViewFactory {
         openAttachment: (FileAttachment) -> Unit = { AttachmentView.openDefault(it, openFile, openUrl) },
         openDiff: SessionDiffOpener = { _, _, _ -> },
         sessionId: String? = null,
+        rollback: (() -> Unit)? = null,
         onOpenSubagent: ((String, String) -> Unit)? = null,
         // avatarColor sits before onPromoteBackgroundAgent (not after) so this overload's last
         // parameter stays a non-function type: if a lambda type were last here, a trailing-lambda
@@ -61,7 +62,7 @@ object ViewFactory {
         avatarColor: (String) -> Int? = { null },
         onPromoteBackgroundAgent: BackgroundPromote? = null,
     ): PartView = when (content) {
-        is Text -> TextView(content, openFile = openFile, openUrl = openUrl, selection = selection)
+        is Text -> TextView(content, openFile = openFile, openUrl = openUrl, selection = selection, rollback = rollback)
         is Reasoning -> ReasoningView(content, openFile = openFile, openUrl = openUrl, selection = selection)
         is FileAttachment -> AttachmentView(content, openAttachment)
         is Tool -> when {
@@ -120,7 +121,6 @@ object ViewFactory {
             onOpenSubagent = onOpenSubagent, avatarColor = avatarColor, onPromoteBackgroundAgent = onPromoteBackgroundAgent,
         )
     }
-
     /**
      * Returns true when [view] must be replaced by a new renderer for [content].
      * This happens when a running question tool (rendered as [ToolView]) completes

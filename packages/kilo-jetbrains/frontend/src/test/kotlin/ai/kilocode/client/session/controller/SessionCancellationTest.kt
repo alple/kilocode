@@ -112,17 +112,17 @@ class SessionCancellationTest : SessionControllerTestBase() {
         edt { assertFalse(m.canRetry()) }
     }
 
-    /** A revert aborts a busy session on purpose, so its abort is a Stop and not a lost turn. */
-    fun `test revert abort counts as requested`() {
+    /** Rewind is idle-only: a busy revert is refused outright, so it cannot produce an abort to excuse. */
+    fun `test busy revert is refused instead of aborting`() {
         val (m, _, _) = prompted()
 
         emit(ChatEventDto.TurnOpen("ses_test"))
         edt { m.revert("msg1") }
         flush()
-        emit(ChatEventDto.Error("ses_test", abort))
 
-        assertTrue(notifications.isEmpty())
-        assertFalse(m.model.state is SessionState.Error)
+        assertTrue(rpc.aborts.isEmpty())
+        assertTrue(rpc.reverts.isEmpty())
+        assertTrue(m.model.state is SessionState.Busy)
     }
 
     /** The flag describes one cancellation. A later turn must not inherit the earlier Stop. */
