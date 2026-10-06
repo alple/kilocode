@@ -1,10 +1,11 @@
 ---
 id: KILO-7.3
 title: 'Decide the picker shape: extend, duplicate, or new provider picker'
-status: To Do
-assignee: []
+status: In Progress
+assignee:
+  - dev1
 created_date: '2026-10-06 07:27'
-updated_date: '2026-10-06 09:09'
+updated_date: '2026-10-06 09:19'
 labels:
   - 'wayfinder:grilling'
 dependencies:
