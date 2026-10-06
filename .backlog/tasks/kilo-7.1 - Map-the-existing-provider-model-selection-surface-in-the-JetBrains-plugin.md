@@ -5,7 +5,7 @@ status: Done
 assignee:
   - dev1
 created_date: '2026-10-06 07:27'
-updated_date: '2026-10-06 07:35'
+updated_date: '2026-10-06 11:12'
 labels:
   - 'wayfinder:research'
 dependencies: []
@@ -46,5 +46,11 @@ Condensed findings:
 3. STATE: selectModel persists only session-local prefs (SessionController.kt:871-888, pref fields :208) and reaches the CLI per-turn via PromptDto (KiloSessionRpcApi.kt:109). The ONLY persisted model selection is per-agent, machine-global `~/.local/state/kilo/model.json` (KiloBackendModelStateManager.kt:25,66-73) — written only by the New Worktree dialog path (KiloAppService.kt:287-298); same file the CLI reads/writes (kilocode/config/model-state.ts:51, provider.ts:2151). Agent/mode persists in PropertiesComponent (KiloPluginSettings.kt:21-24).
 4. BOUNDARY: no CLI change needed to make non-connected provider models selectable (catalog already in `all`; restrictions are ModelItems.kt:15/SessionController.kt:1226-1228). A provider-level default would need changes in kilocode/config/model-state.ts (schema), cloud/defaults.ts, config-console.ts, provider.ts defaultModel, plus JetBrains mirrors ModelStateDto.kt, KiloCliDataParser.kt:868-894, KiloBackendModelStateManager.kt. Full endpoint tables in doc §4.
 5. PARITY: TUI and VS Code both use flat grouped lists (Favorites/Recommended/provider sections), providerID/modelID selection unit, no provider-first drill-down (tui/src/kilocode/model-picker.ts:97-186; kilo-vscode ModelSelector.tsx:320-392). Flagged: ProvidersDto.defaults is provider-keyed on the wire but read agent-keyed in SessionSelection.kt:38-41 — likely dead fallback branch.
+---
+
+author: wayfinder
+created: 2026-10-06 11:12
+---
+Findings doc relocated from `.kilo/plans/wayfinder/kilo-7.1-selection-surface.md` to Backlog document **doc-1** (`wayfinder/doc-1 — KILO-7.1 — Provider/model selection surface (JetBrains plugin)`). Loose-file findings are discontinued — rule: findings/plans/specs live on the board (AGENTS.md → Issue tracker).
 ---
 <!-- COMMENTS:END -->
