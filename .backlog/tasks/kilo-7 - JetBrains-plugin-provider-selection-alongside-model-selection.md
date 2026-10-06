@@ -1,10 +1,10 @@
 ---
 id: KILO-7
 title: 'JetBrains plugin: provider selection alongside model selection'
-status: In Progress
+status: Done
 assignee: []
 created_date: '2026-10-06 07:27'
-updated_date: '2026-10-06 12:34'
+updated_date: '2026-10-06 12:41'
 labels:
   - 'wayfinder:map'
 dependencies: []
@@ -54,3 +54,18 @@ A **decided design** (not an implementation) for choosing *which server routes a
 - [ ] #2 All child decision tickets created with wayfinder:* labels and blocking edges wired
 - [ ] #3 Each resolved ticket lands a resolution comment + a Decisions-so-far pointer on this map
 <!-- AC:END -->
+
+## Comments
+
+<!-- COMMENTS:BEGIN -->
+created: 2026-10-06 12:41
+---
+Closed at the user's instruction (2026-10-06). Destination reached: the decided design for model + route picking in the JetBrains plugin is complete — all six decision tickets (KILO-7.1–7.6) resolved, ADRs 0001/0002 written, glossary updated. Implementation lives on the feature root [JetBrains plugin: implement model + route picking (OpenRouter and marked providers)](KILO-8), starting with its planning ticket [Plan the implementation: seed build tickets from the decided design](KILO-8.1).
+---
+<!-- COMMENTS:END -->
+
+## Final Summary
+
+<!-- SECTION:FINAL_SUMMARY:BEGIN -->
+Wayfinder map complete and closed: decided design delivered for model+route+effort selection in the JetBrains plugin. Six decision tickets resolved (surface map, picker intent, picker shape, new-session defaults, OpenRouter API survey, route-support scope), ADR-0001 (Deluxe-owned route picker) + ADR-0002 (per-project parameter store) written, glossary terms added (Deluxe, Route, Parameter lock, Project store). Hand-off: implementation epic KILO-8 with planning stub KILO-8.1.
+<!-- SECTION:FINAL_SUMMARY:END -->
