@@ -1494,9 +1494,14 @@ export const layer = Layer.effect(
           input.sessionID,
           message.info.id,
           bridge.run(
-            loop({ sessionID: input.sessionID, snapshotInitialization: input.snapshotInitialization }, ticket).pipe(
-              Effect.orDie,
-            ),
+            loop(
+              {
+                sessionID: input.sessionID,
+                snapshotInitialization: input.snapshotInitialization,
+                route: input.route, // kilocode_change - per-turn route applies to this turn only
+              },
+              ticket,
+            ).pipe(Effect.orDie),
           ), // kilocode_change
           bridge.run(lastAssistant(input.sessionID)),
           dismiss,
@@ -1863,6 +1868,7 @@ export const layer = Layer.effect(
               finished: lastFinished,
             }),
             // kilocode_change end
+            route: input.route, // kilocode_change - per-turn OpenRouter routing tag
           })
 
           // kilocode_change start - persist a lightweight marker when this assistant step had memory context
@@ -2515,6 +2521,7 @@ export const PromptInput = Schema.Struct({
   format: Schema.optional(SessionV1.Format),
   system: Schema.optional(Schema.String),
   variant: Schema.optional(Schema.String),
+  route: Schema.optional(Schema.String), // kilocode_change - per-turn OpenRouter routing tag
   // kilocode_change start - managed product slow-snapshot policy
   snapshotInitialization: Schema.optional(Schema.Literal("wait")).annotate({
     description: "Wait silently if snapshot initialization is slow instead of asking the user.",
@@ -2552,6 +2559,7 @@ export class LoopInput extends Schema.Class<LoopInput>("SessionPrompt.LoopInput"
   sessionID: SessionID,
   resume: Schema.optional(MessageID), // kilocode_change
   snapshotInitialization: Schema.optional(Schema.Literal("wait")), // kilocode_change
+  route: Schema.optional(Schema.String), // kilocode_change - per-turn OpenRouter routing tag
 }) {
   static readonly zod = zod(this)
 }

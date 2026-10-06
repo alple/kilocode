@@ -29,6 +29,7 @@ import { KiloSession } from "@/kilocode/session"
 import { stripInternalOptions } from "@/kilocode/agent/options"
 import { KilocodeSystemPrompt } from "@/kilocode/system-prompt"
 import { KiloLLM } from "@/kilocode/session/llm"
+import * as KiloRoute from "@/kilocode/session/route" // kilocode_change - per-turn OpenRouter route pin
 // kilocode_change end
 
 type PrepareInput = {
@@ -47,6 +48,7 @@ type PrepareInput = {
   readonly plugin: Plugin.Interface
   readonly flags: RuntimeFlags.Info
   readonly isWorkflow: boolean
+  readonly route?: string // kilocode_change - per-turn OpenRouter routing tag
 }
 
 export type Prepared = {
@@ -107,9 +109,14 @@ export const prepare = Effect.fn("LLMRequestPrep.prepare")(function* (input: Pre
         providerOptions: input.provider.options,
       })
   // kilocode_change start - drop Kilo-internal agent metadata (id/displayName/source)
-  // so it never leaks into providerOptions and gets rejected by strict providers
+  // so it never leaks into providerOptions and gets rejected by strict providers;
+  // per-turn route pin merges last so it outranks variant/model/agent options
   const agentOptions = stripInternalOptions(input.agent.options)
-  const options = mergeOptions(mergeOptions(mergeOptions(base, input.model.options), agentOptions), variant)
+  const routeOptions = KiloRoute.resolve({ route: input.route, model: input.model })
+  const options = mergeOptions(
+    mergeOptions(mergeOptions(mergeOptions(base, input.model.options), agentOptions), variant),
+    routeOptions,
+  )
   // kilocode_change end
   if (
     input.model.api.npm === "@ai-sdk/azure" &&

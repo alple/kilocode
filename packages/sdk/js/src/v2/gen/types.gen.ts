@@ -4782,6 +4782,12 @@ export type KilocodeMigrateSessionsDiscoverResult = {
   dropped: Array<string>
 }
 
+export type RouteListError = {
+  _tag: "RouteListError"
+  message: string
+  status?: number | "NaN" | "Infinity" | "-Infinity" | "Infinity" | "-Infinity" | "NaN"
+}
+
 export type KilocodeSessionImportResult = {
   ok: boolean
   id: string
@@ -13781,6 +13787,7 @@ export type SessionPromptData = {
     format?: OutputFormat
     system?: string
     variant?: string
+    route?: string
     snapshotInitialization?: "wait"
     editorContext?: {
       directory?: string
@@ -14142,6 +14149,7 @@ export type SessionPromptAsyncData = {
     format?: OutputFormat
     system?: string
     variant?: string
+    route?: string
     snapshotInitialization?: "wait"
     editorContext?: {
       directory?: string
@@ -18212,6 +18220,65 @@ export type RemoteStatusResponses = {
 }
 
 export type RemoteStatusResponse = RemoteStatusResponses[keyof RemoteStatusResponses]
+
+export type RoutesListData = {
+  body?: never
+  path: {
+    author: string
+    slug: string
+  }
+  query?: {
+    directory?: string
+    workspace?: string
+  }
+  url: "/kilo/routes/{author}/{slug}"
+}
+
+export type RoutesListErrors = {
+  /**
+   * BadRequest | InvalidRequestError
+   */
+  400: EffectHttpApiErrorBadRequest | InvalidRequestError
+  /**
+   * Not found
+   */
+  404: NotFoundError
+  /**
+   * RouteListError
+   */
+  502: RouteListError
+}
+
+export type RoutesListError = RoutesListErrors[keyof RoutesListErrors]
+
+export type RoutesListResponses = {
+  /**
+   * OpenRouter routing endpoints for one model
+   */
+  200: Array<{
+    tag: string
+    providerName?: string
+    name?: string
+    quantization?: string
+    status?: number | "NaN" | "Infinity" | "-Infinity" | "Infinity" | "-Infinity" | "NaN"
+    uptime: {
+      last5m?: number | "NaN" | "Infinity" | "-Infinity" | "Infinity" | "-Infinity" | "NaN"
+      last30m?: number | "NaN" | "Infinity" | "-Infinity" | "Infinity" | "-Infinity" | "NaN"
+      last1d?: number | "NaN" | "Infinity" | "-Infinity" | "Infinity" | "-Infinity" | "NaN"
+    }
+    pricing: {
+      prompt?: number | "NaN" | "Infinity" | "-Infinity" | "Infinity" | "-Infinity" | "NaN"
+      completion?: number | "NaN" | "Infinity" | "-Infinity" | "Infinity" | "-Infinity" | "NaN"
+      inputCacheRead?: number | "NaN" | "Infinity" | "-Infinity" | "Infinity" | "-Infinity" | "NaN"
+      discount?: number | "NaN" | "Infinity" | "-Infinity" | "Infinity" | "-Infinity" | "NaN"
+    }
+    contextLength?: number | "NaN" | "Infinity" | "-Infinity" | "Infinity" | "-Infinity" | "NaN"
+    maxCompletionTokens?: number | "NaN" | "Infinity" | "-Infinity" | "Infinity" | "-Infinity" | "NaN"
+    supportedParameters?: Array<string>
+  }>
+}
+
+export type RoutesListResponse = RoutesListResponses[keyof RoutesListResponses]
 
 export type SandboxSupportData = {
   body?: never

@@ -256,6 +256,76 @@ describe("LLM request output tokens", () => {
   )
 })
 
+describe("LLM request route pin", () => {
+  const run = (input: { model: Provider.Model; route?: string; variant?: string }) =>
+    Effect.gen(function* () {
+      const flags = yield* RuntimeFlags.Service
+      const result = yield* LLMRequestPrep.prepare({
+        user: {
+          ...user("code"),
+          model: { providerID: model.providerID, modelID: input.model.id, variant: input.variant },
+        },
+        sessionID: "ses_test",
+        model: input.model,
+        agent: agent("code"),
+        system: [],
+        messages: [],
+        tools: {},
+        provider: { id: model.providerID, name: "Test provider", source: "config", env: [], options: {}, models: {} },
+        auth: undefined,
+        plugin,
+        flags,
+        isWorkflow: false,
+        route: input.route,
+      })
+      return result.params.options
+    })
+
+  const mdl = (input: { npm: string; options?: Record<string, any>; variants?: Provider.Model["variants"] }) => ({
+    ...model,
+    api: { ...model.api, npm: input.npm },
+    options: input.options ?? {},
+    variants: input.variants,
+  })
+
+  it.instance("pins the route for both OpenRouter transports", () =>
+    Effect.gen(function* () {
+      for (const npm of ["@openrouter/ai-sdk-provider", "@kilocode/kilo-gateway"]) {
+        const options = yield* run({ model: mdl({ npm }), route: "parasail/fp4" })
+        expect(options.provider).toEqual({ order: ["parasail/fp4"], allow_fallbacks: false })
+      }
+    }),
+  )
+
+  it.instance("absent route is a no-op", () =>
+    Effect.gen(function* () {
+      const options = yield* run({ model: mdl({ npm: "@openrouter/ai-sdk-provider" }) })
+      expect(options.provider).toBeUndefined()
+    }),
+  )
+
+  it.instance("skips the pin for non-OpenRouter transports", () =>
+    Effect.gen(function* () {
+      for (const npm of ["@ai-sdk/anthropic", "@ai-sdk/openai-compatible"]) {
+        const options = yield* run({ model: mdl({ npm }), route: "parasail/fp4" })
+        expect(options.provider).toBeUndefined()
+      }
+    }),
+  )
+
+  it.instance("outranks variant and model-options provider routing", () =>
+    Effect.gen(function* () {
+      const mdl2 = mdl({
+        npm: "@openrouter/ai-sdk-provider",
+        options: { provider: { order: ["from-model-options"], allow_fallbacks: true } },
+        variants: { high: { provider: { order: ["from-variant"] } } },
+      })
+      const options = yield* run({ model: mdl2, route: "pinned/tag", variant: "high" })
+      expect(options.provider).toEqual({ order: ["pinned/tag"], allow_fallbacks: false })
+    }),
+  )
+})
+
 describe("LLM request headers", () => {
   for (const name of ["opencode", "opencode-go"]) {
     it.instance(

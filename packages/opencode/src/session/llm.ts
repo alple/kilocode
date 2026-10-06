@@ -59,6 +59,7 @@ export type StreamInput = {
   toolChoice?: "auto" | "required" | "none"
   preflight?: boolean // kilocode_change - enable proactive threshold compaction for normal session turns
   reportedContextTokens?: number // kilocode_change - provider-reported context size from the last finished turn, source of truth for the output cap
+  route?: string // kilocode_change - per-turn OpenRouter routing tag
 }
 
 export type StreamRequest = StreamInput & {

@@ -382,6 +382,8 @@ import type {
   RemoteEnableResponses,
   RemoteStatusErrors,
   RemoteStatusResponses,
+  RoutesListErrors,
+  RoutesListResponses,
   SandboxStatusErrors,
   SandboxStatusResponses,
   SandboxSupportErrors,
@@ -4639,6 +4641,7 @@ export class Session2 extends HeyApiClient {
       format?: OutputFormat
       system?: string
       variant?: string
+      route?: string
       snapshotInitialization?: "wait"
       editorContext?: {
         directory?: string
@@ -4668,6 +4671,7 @@ export class Session2 extends HeyApiClient {
             { in: "body", key: "format" },
             { in: "body", key: "system" },
             { in: "body", key: "variant" },
+            { in: "body", key: "route" },
             { in: "body", key: "snapshotInitialization" },
             { in: "body", key: "editorContext" },
             { in: "body", key: "parts" },
@@ -5007,6 +5011,7 @@ export class Session2 extends HeyApiClient {
       format?: OutputFormat
       system?: string
       variant?: string
+      route?: string
       snapshotInitialization?: "wait"
       editorContext?: {
         directory?: string
@@ -5036,6 +5041,7 @@ export class Session2 extends HeyApiClient {
             { in: "body", key: "format" },
             { in: "body", key: "system" },
             { in: "body", key: "variant" },
+            { in: "body", key: "route" },
             { in: "body", key: "snapshotInitialization" },
             { in: "body", key: "editorContext" },
             { in: "body", key: "parts" },
@@ -9300,6 +9306,42 @@ export class Remote extends HeyApiClient {
   }
 }
 
+export class Routes extends HeyApiClient {
+  /**
+   * List OpenRouter routing endpoints
+   *
+   * Proxy the OpenRouter per-model endpoints API, normalized and deduplicated by routing tag.
+   */
+  public list<ThrowOnError extends boolean = false>(
+    parameters: {
+      author: string
+      slug: string
+      directory?: string
+      workspace?: string
+    },
+    options?: Options<never, ThrowOnError>,
+  ) {
+    const params = buildClientParams(
+      [parameters],
+      [
+        {
+          args: [
+            { in: "path", key: "author" },
+            { in: "path", key: "slug" },
+            { in: "query", key: "directory" },
+            { in: "query", key: "workspace" },
+          ],
+        },
+      ],
+    )
+    return (options?.client ?? this.client).get<RoutesListResponses, RoutesListErrors, ThrowOnError>({
+      url: "/kilo/routes/{author}/{slug}",
+      ...options,
+      ...params,
+    })
+  }
+}
+
 export class Sandbox extends HeyApiClient {
   /**
    * Get sandbox backend support
@@ -12198,6 +12240,11 @@ export class KiloClient extends HeyApiClient {
   private _remote?: Remote
   get remote(): Remote {
     return (this._remote ??= new Remote({ client: this.client }))
+  }
+
+  private _routes?: Routes
+  get routes(): Routes {
+    return (this._routes ??= new Routes({ client: this.client }))
   }
 
   private _sandbox?: Sandbox
