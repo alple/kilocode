@@ -27,3 +27,7 @@ _Avoid_: sub-provider (internal jargon), provider (ambiguous with catalog provid
 **Parameter lock**:
 The session state in which model, route, and effort are frozen as one from a session's first message until the user explicitly unfreezes; changes apply from the next message onward.
 _Avoid_: freeze (verb form is fine, "freeze" as noun avoided), pin (reserved for route pinning)
+
+**Project store**:
+The per-IntelliJ-project persisted record of the user's last picks — model per agent, reasoning effort and route per (provider, model), plus the remembered mode/agent. The seed a new session inherits from; JetBrains-side and Deluxe-owned.
+_Avoid_: model.json defaults (that file is machine-global), session prefs (in-memory, per session)
