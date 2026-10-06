@@ -41,10 +41,10 @@ Expected ticket shape (adjust as planning dictates; wire native blocking depende
 
 ## Acceptance Criteria
 <!-- AC:BEGIN -->
-- [ ] #1 Child build tickets exist on KILO-8 (CLI-first order honored) with native blocking dependencies wired
-- [ ] #2 Each ticket cites the decision(s) it implements and names its touch surfaces
-- [ ] #3 Hard constraints carried into every ticket: fork strategy, no ModelStateDto/model.json change
-- [ ] #4 Favorites disposition and route transport mechanism decided and recorded (ticket texts + ADR-0002 clarification)
+- [x] #1 Child build tickets exist on KILO-8 (CLI-first order honored) with native blocking dependencies wired
+- [x] #2 Each ticket cites the decision(s) it implements and names its touch surfaces
+- [x] #3 Hard constraints carried into every ticket: fork strategy, no ModelStateDto/model.json change
+- [x] #4 Favorites disposition and route transport mechanism decided and recorded (ticket texts + ADR-0002 clarification)
 <!-- AC:END -->
 
 ## Comments
