@@ -5,7 +5,7 @@ status: Done
 assignee:
   - dev1
 created_date: '2026-10-06 07:27'
-updated_date: '2026-10-06 09:13'
+updated_date: '2026-10-06 11:12'
 labels:
   - 'wayfinder:grilling'
 dependencies:
@@ -45,5 +45,11 @@ Resolved. The decision:
 5. **Persistence: sticky per session.** The frozen selection rides the session until the user unfreezes — not per-turn switching, not per-agent defaults. What a *new* session inherits is KILO-7.4's question (after the shape decision).
 
 Evidence base: KILO-7.1 findings doc (`.kilo/plans/wayfinder/kilo-7.1-selection-surface.md`) + map Notes pipeline facts (request.ts:112 → transform.ts:1723; ProviderDto.kt:68-70; ModelPickerRenderer.kt:93).
+---
+
+author: wayfinder
+created: 2026-10-06 11:12
+---
+Evidence-base pointer update: the KILO-7.1 findings doc cited above now lives as Backlog document **doc-1** (`.kilo/plans/` loose files discontinued).
 ---
 <!-- COMMENTS:END -->
