@@ -1,11 +1,11 @@
 ---
 id: KILO-7.5
 title: Survey OpenRouter per-model server list API and routing preferences
-status: In Progress
+status: Done
 assignee:
   - dev1
 created_date: '2026-10-06 09:13'
-updated_date: '2026-10-06 09:13'
+updated_date: '2026-10-06 09:19'
 labels:
   - 'wayfinder:research'
 dependencies: []
@@ -31,3 +31,19 @@ Facts to establish (public docs and/or live public API — no credentials needed
 
 Deliverable: findings doc + the facts the route-list DTO naming and Auto-option design hang on.
 <!-- SECTION:DESCRIPTION:END -->
+
+## Comments
+
+<!-- COMMENTS:BEGIN -->
+author: wayfinder
+created: 2026-10-06 09:19
+---
+Resolved. Findings doc: `.kilo/plans/wayfinder/kilo-7.5-openrouter-endpoints.md` (live-verified against the public API, no credentials). Decisive facts for the route-picker design:
+
+1. **Server list**: `GET /api/v1/models/{author}/{slug}/endpoints` — public (no auth, 200), no pagination, one array (34 endpoints for z-ai/glm-5.3-flash). The catalog `GET /api/v1/models` carries NO server data (`endpoint: null`) — the sub-resource is the only source. `GET /api/v1/providers` maps display names → slugs (Parasail → parasail).
+2. **Endpoint fields**: name, provider_name, tag (routing slug incl. variant, e.g. `parasail/fp4`), context/max tokens, quantization, status (0 = healthy), uptime windows, latency/throughput percentiles (**null unless authed**), pricing + discount, supported_parameters, native_tools. Same tag can repeat (two baseten/fp8 rows) and endpoint sets churn (deepseek-r1 down to 1) — the picker/DTO must tolerate duplicates and churn.
+3. **Pinning one server**: `provider: { order: ["<slug>/<variant>"], allow_fallbacks: false }` (base slug matches all variants; full tag pins exactly one; `only` equivalent). Setting `order`/`sort` disables load balancing.
+4. **kilo.json interim works, two gotchas**: options flow config → request.ts:112 → transform.ts:1723 → SDK spreads `providerOptions.openrouter` verbatim into the body. Gotcha 1: `OpenRouterProviderOptions` has no `provider` key — untyped passthrough (works, invisible to TS). Gotcha 2: keys must be snake_case (`allow_fallbacks`) and `order` values must be slugs, not display names — map via endpoint `tag`.
+5. Implication for the live route list: the CLI proxy endpoint can be thin (pass-through + slug/tag mapping), and latency/throughput fields need an authenticated call — an unauthenticated route list shows pricing/uptime/quantization but not latency percentiles.
+---
+<!-- COMMENTS:END -->
