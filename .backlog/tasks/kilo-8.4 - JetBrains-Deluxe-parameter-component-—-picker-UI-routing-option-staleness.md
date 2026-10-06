@@ -4,8 +4,11 @@ title: 'JetBrains: Deluxe parameter component — picker UI, routing option, sta
 status: To Do
 assignee: []
 created_date: '2026-10-06 13:05'
+updated_date: '2026-10-06 13:05'
 labels: []
-dependencies: []
+dependencies:
+  - KILO-8.2
+  - KILO-8.3
 parent_task_id: KILO-8
 priority: high
 type: enhancement
