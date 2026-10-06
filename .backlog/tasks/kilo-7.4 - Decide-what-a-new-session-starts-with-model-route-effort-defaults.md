@@ -3,9 +3,9 @@ id: KILO-7.4
 title: Decide what a new session starts with (model/route/effort defaults)
 status: Done
 assignee:
-  - '@dev1'
+  - dev1
 created_date: '2026-10-06 09:13'
-updated_date: '2026-10-06 12:27'
+updated_date: '2026-10-06 13:48'
 labels:
   - 'wayfinder:grilling'
 dependencies:
