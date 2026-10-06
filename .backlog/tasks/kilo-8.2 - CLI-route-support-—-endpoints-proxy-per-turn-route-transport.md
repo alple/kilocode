@@ -46,6 +46,16 @@ ordinal: 22000
 - CLI-side tests for the proxy handler (dedupe by tag, 404 passthrough, key/no-key call shapes) and the route→options resolve (merged at highest precedence; absent = no-op). SDK builds after regen.
 <!-- SECTION:DESCRIPTION:END -->
 
+## Acceptance Criteria
+<!-- AC:BEGIN -->
+- [ ] #1 GET /kilo/routes/:author/:slug proxies the OpenRouter endpoints API: normalized rows (tag, providerName, name, quantization, status, uptime windows, pricing, contextLength, maxCompletionTokens, supportedParameters), dedupe by tag (first wins), missing/malformed fields tolerated, upstream 404 → NotFound passthrough, other upstream failures → 502-style error with message, invalid path segments → BadRequest
+- [ ] #2 Auth posture: stored BYOK OpenRouter key (auth.get(openrouter), type api) attached as Bearer when present, public call otherwise — both header shapes tested
+- [ ] #3 Per-turn transport: optional route field on the prompt input reaches the LLM request for that turn only — no session-state persistence anywhere (no message storage, no model.json writes); absent route = no-op (Auto/provider-default routing)
+- [ ] #4 Resolution: kilo-owned helper emits provider {order: [tag], allow_fallbacks: false} merged at highest precedence (after variant) in the request options, gated to the OpenRouter transports (@openrouter/ai-sdk-provider, @kilocode/kilo-gateway)
+- [ ] #5 SDK regenerated via the documented generate script (new endpoint + prompt field in SDK types), not hand-edited
+- [ ] #6 Targeted CLI tests + typecheck pass; shared opencode edits are minimal kilocode_change-marked lines; no ModelStateDto/model.json change
+<!-- AC:END -->
+
 ## Implementation Plan
 
 <!-- SECTION:PLAN:BEGIN -->
