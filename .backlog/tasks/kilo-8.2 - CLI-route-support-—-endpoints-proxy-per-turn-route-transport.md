@@ -1,11 +1,11 @@
 ---
 id: KILO-8.2
 title: 'CLI: route support — endpoints proxy + per-turn route transport'
-status: To Do
+status: In Progress
 assignee:
   - dev1
 created_date: '2026-10-06 13:04'
-updated_date: '2026-10-06 14:06'
+updated_date: '2026-10-06 14:08'
 labels: []
 dependencies: []
 parent_task_id: KILO-8
