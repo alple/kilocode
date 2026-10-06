@@ -1,9 +1,11 @@
 ---
 id: KILO-7.5
 title: Survey OpenRouter per-model server list API and routing preferences
-status: To Do
-assignee: []
+status: In Progress
+assignee:
+  - dev1
 created_date: '2026-10-06 09:13'
+updated_date: '2026-10-06 09:13'
 labels:
   - 'wayfinder:research'
 dependencies: []
