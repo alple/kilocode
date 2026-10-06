@@ -50,9 +50,9 @@ A **decided design** (not an implementation) for choosing *which server routes a
 
 ## Acceptance Criteria
 <!-- AC:BEGIN -->
-- [ ] #1 Map has Destination, Notes, Decisions so far, Not yet specified, Out of scope sections
-- [ ] #2 All child decision tickets created with wayfinder:* labels and blocking edges wired
-- [ ] #3 Each resolved ticket lands a resolution comment + a Decisions-so-far pointer on this map
+- [x] #1 Map has Destination, Notes, Decisions so far, Not yet specified, Out of scope sections
+- [x] #2 All child decision tickets created with wayfinder:* labels and blocking edges wired
+- [x] #3 Each resolved ticket lands a resolution comment + a Decisions-so-far pointer on this map
 <!-- AC:END -->
 
 ## Comments
