@@ -1,9 +1,11 @@
 ---
 id: KILO-7.4
 title: Decide what a new session starts with (model/route/effort defaults)
-status: To Do
-assignee: []
+status: In Progress
+assignee:
+  - '@dev1'
 created_date: '2026-10-06 09:13'
+updated_date: '2026-10-06 11:23'
 labels:
   - 'wayfinder:grilling'
 dependencies:
