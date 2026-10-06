@@ -10,6 +10,12 @@ Kilo CLI is an open source AI coding agent that generates code from natural lang
 - Prefer automation: execute requested actions without confirmation unless blocked by missing info or safety/irreversibility.
 - You may be running in a git worktree. All changes must be made in your current working directory — never modify files in the main repo checkout.
 
+## Anonymity
+
+- **Never write personal or machine-specific info** into anything produced in this repo — tickets, comments, docs, plans, specs, code, commit messages, or chat reports: no real names, usernames, emails, personal or absolute filesystem paths (`/home/...`, `/Users/...`, `C:\...`), or machine identifiers.
+- **Use the anonymized identity `dev1`** for ticket assignees and agent authorship in written content. **Never change the git identity or other git config** (`user.name`/`user.email`, remotes, hooks): commit authorship belongs to the user's environment config even when it carries a personal identity — anonymizing it is the user's own call (a one-time rewrite the user explicitly orders, e.g. the tracker-history rewrite, is the exception and is reported afterwards).
+- **Repo-relative paths only** (`packages/opencode/src/...`); never reference paths outside the repo checkout.
+
 ## Build and Dev
 
 - **Dev**: `bun run dev` (runs from root) or `bun run --cwd packages/opencode --conditions=browser src/index.ts`

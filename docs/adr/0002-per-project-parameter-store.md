@@ -16,3 +16,4 @@ JetBrains sessions need inheritance for model/route/effort that survives IDE res
 - The dead `ProvidersDto.defaults` pre-READY branch in `SessionSelection.kt` is deleted; pre-READY bootstrap degrades to the first picker item (the wire carries bare model IDs the parser could never read).
 - Today's broad `syncModelSelection` re-fires on background events get narrowed to the on-demand-only contract.
 - `model.json` remains a live store for the CLI TUI; the JetBrains plugin treats it as read-only.
+- **Favorites carve-out (decided 2026-10-06, planning ticket KILO-8.1)**: model **favorites** keep the existing shared `updateModelFavorite` → `model.json` write path (favorites are cross-surface with the TUI/VS Code, so per-project storage would desync them). "JetBrains stops writing `model.json`" applies to selection/variant/route/mode writes only.
