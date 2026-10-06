@@ -1,9 +1,10 @@
 ---
 id: KILO-7
 title: 'JetBrains plugin: provider selection alongside model selection'
-status: To Do
+status: In Progress
 assignee: []
 created_date: '2026-10-06 07:27'
+updated_date: '2026-10-06 07:35'
 labels:
   - 'wayfinder:map'
 dependencies: []
@@ -28,6 +29,8 @@ A **decided design** (not an implementation) for choosing *which provider* to us
 - Tickets are decisions only — resolving a ticket closes it; implementation planning happens after the map is clear.
 
 ## Decisions so far
+
+- [Map the existing provider/model selection surface in the JetBrains plugin](KILO-7.1): CLI already ships full catalogs for non-connected providers; the kilo+connected filter is client-side only (no CLI change needed to widen the picker); `PickerPopup` is single-list with no nav stack; only persisted selection is per-agent `model.json`, written solely by the New Worktree dialog. Findings: `.kilo/plans/wayfinder/kilo-7.1-selection-surface.md`.
 
 ## Not yet specified
 
