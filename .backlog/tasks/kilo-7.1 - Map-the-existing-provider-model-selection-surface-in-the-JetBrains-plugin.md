@@ -1,11 +1,11 @@
 ---
 id: KILO-7.1
 title: Map the existing provider/model selection surface in the JetBrains plugin
-status: In Progress
+status: Testing
 assignee:
   - dev1
 created_date: '2026-10-06 07:27'
-updated_date: '2026-10-06 07:27'
+updated_date: '2026-10-06 07:34'
 labels:
   - 'wayfinder:research'
 dependencies: []
@@ -32,3 +32,19 @@ Facts to establish (verified, with file/line evidence):
 
 Deliverable: a findings doc + the facts that the UX and shape decisions hang on.
 <!-- SECTION:DESCRIPTION:END -->
+
+## Comments
+
+<!-- COMMENTS:BEGIN -->
+created: 2026-10-06 07:34
+---
+Findings doc: `.kilo/plans/wayfinder/kilo-7.1-selection-surface.md` (all claims with file:line evidence).
+
+Condensed findings:
+1. DATA: ProvidersDto = providers(all)/connected/defaults (ProviderDto.kt:92-96); ModelSelectionDto = providerID/modelID pair (ModelStateDto.kt:6-9). CLI GET /provider already returns full catalogs for ALL enabled (incl. non-connected) providers in `all` (opencode handlers/provider.ts:54-107); JetBrains maps them verbatim (KiloWorkspaceDtoMapper.kt:46-50, KiloBackendWorkspace.kt:277) — filtering to kilo+connected is client-side only (ModelItems.kt:15, SessionSelection.kt:84).
+2. UI: PickerPopup is a single flat list with search, section headers, favorite star, details panel, toolbar slot — no built-in two-level nav (PickerPopup.kt:60,67,181-190); a provider-first step would live in ModelPicker (owns rows closure, ModelPicker.kt:215) but Mode.Single auto-closes on pick (PickerPopup.kt:277-285). ModelPicker embeds in PromptPanel (PromptPanel.kt:149-153, bound at SessionUi.kt:708-724), Models settings (ModelsSettingsUi.kt), and NewWorktreeDialog (NewWorktreeDialog.kt:271-285). ProvidersSettingsUi has full connect/OAuth/disconnect/enable/custom-provider flows (ProvidersSettingsUi.kt:129-141).
+3. STATE: selectModel persists only session-local prefs (SessionController.kt:871-888, pref fields :208) and reaches the CLI per-turn via PromptDto (KiloSessionRpcApi.kt:109). The ONLY persisted model selection is per-agent, machine-global `~/.local/state/kilo/model.json` (KiloBackendModelStateManager.kt:25,66-73) — written only by the New Worktree dialog path (KiloAppService.kt:287-298); same file the CLI reads/writes (kilocode/config/model-state.ts:51, provider.ts:2151). Agent/mode persists in PropertiesComponent (KiloPluginSettings.kt:21-24).
+4. BOUNDARY: no CLI change needed to make non-connected provider models selectable (catalog already in `all`; restrictions are ModelItems.kt:15/SessionController.kt:1226-1228). A provider-level default would need changes in kilocode/config/model-state.ts (schema), cloud/defaults.ts, config-console.ts, provider.ts defaultModel, plus JetBrains mirrors ModelStateDto.kt, KiloCliDataParser.kt:868-894, KiloBackendModelStateManager.kt. Full endpoint tables in doc §4.
+5. PARITY: TUI and VS Code both use flat grouped lists (Favorites/Recommended/provider sections), providerID/modelID selection unit, no provider-first drill-down (tui/src/kilocode/model-picker.ts:97-186; kilo-vscode ModelSelector.tsx:320-392). Flagged: ProvidersDto.defaults is provider-keyed on the wire but read agent-keyed in SessionSelection.kt:38-41 — likely dead fallback branch.
+---
+<!-- COMMENTS:END -->
