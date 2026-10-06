@@ -5,7 +5,7 @@ status: Testing
 assignee:
   - dev1
 created_date: '2026-10-05 11:22'
-updated_date: '2026-10-05 13:48'
+updated_date: '2026-10-06 13:48'
 labels:
   - ready
 milestone: Chat rewind
