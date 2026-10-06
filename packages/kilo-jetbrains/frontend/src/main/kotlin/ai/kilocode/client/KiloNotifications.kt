@@ -8,6 +8,7 @@ import com.intellij.notification.NotificationType
 import com.intellij.openapi.project.Project
 import com.intellij.openapi.project.ProjectManager
 
+@Suppress("TooManyFunctions")
 object KiloNotifications {
     private const val GROUP = "Kilo Code"
 
@@ -37,6 +38,18 @@ object KiloNotifications {
             .getNotificationGroup(GROUP)
             ?.createNotification(title, content ?: "", NotificationType.WARNING)
             ?: Notification(GROUP, title, content ?: "", NotificationType.WARNING)
+        notification.notify(project)
+    }
+
+    /** Warning notification with one or more expiring actions (e.g. restart, open settings). */
+    fun warning(project: Project?, title: String, content: String?, actions: List<Pair<String, () -> Unit>>) {
+        val notification = NotificationGroupManager.getInstance()
+            .getNotificationGroup(GROUP)
+            ?.createNotification(title, content ?: "", NotificationType.WARNING)
+            ?: Notification(GROUP, title, content ?: "", NotificationType.WARNING)
+        actions.forEach { (label, action) ->
+            notification.addAction(NotificationAction.createSimpleExpiring(label) { action() })
+        }
         notification.notify(project)
     }
 

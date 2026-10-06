@@ -15,6 +15,12 @@
         <customPasteProvider implementation="ai.kilocode.client.session.ui.prompt.PromptAttachmentPasteProvider"/>
         <customPasteProvider implementation="ai.kilocode.client.session.ui.prompt.PromptTextPasteProvider"/>
 
+        <!-- KILO-6: one Kilo plugin identity at a time. The vetoer refuses the other identity's
+             dynamic load; the startup activity disables an identity that is enabled when this one
+             comes up. Both persist the disable and point the user at a restart. -->
+        <ide.dynamicPluginVetoer implementation="ai.kilocode.client.plugin.KiloConflictVetoer"/>
+        <postStartupActivity implementation="ai.kilocode.client.plugin.KiloConflictStartupActivity"/>
+
         <notificationGroup id="Kilo Code"
                            displayType="BALLOON"
                            bundle="messages.KiloBundle"

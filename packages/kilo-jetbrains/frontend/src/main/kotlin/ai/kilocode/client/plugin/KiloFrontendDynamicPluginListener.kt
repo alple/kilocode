@@ -19,7 +19,8 @@ import javax.swing.SwingUtilities
 
 class KiloFrontendDynamicPluginListener : DynamicPluginListener {
     override fun beforePluginUnload(pluginDescriptor: IdeaPluginDescriptor, isUpdate: Boolean) {
-        if (pluginDescriptor.pluginId != KiloPlugin.id) return
+        if (isUpdate) KiloPluginConflictGuard.markUpdating(pluginDescriptor)
+        if (pluginDescriptor.pluginId != KiloPlugin.ownId) return
         KiloFrontendUnloadCleanup.cleanup(isUpdate)
     }
 }

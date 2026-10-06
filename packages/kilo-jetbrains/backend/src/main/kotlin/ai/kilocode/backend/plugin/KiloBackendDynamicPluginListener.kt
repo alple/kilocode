@@ -11,7 +11,7 @@ class KiloBackendDynamicPluginListener : DynamicPluginListener {
     private val log = KiloLog.create(KiloBackendDynamicPluginListener::class.java)
 
     override fun beforePluginUnload(pluginDescriptor: IdeaPluginDescriptor, isUpdate: Boolean) {
-        if (pluginDescriptor.pluginId != KiloPlugin.id) return
+        if (pluginDescriptor.pluginId != KiloPlugin.ownId) return
         log.info("Shutting down Kilo backend for plugin unload (isUpdate=$isUpdate)")
         service<KiloBackendAppService>().shutdownForUnload()
     }
