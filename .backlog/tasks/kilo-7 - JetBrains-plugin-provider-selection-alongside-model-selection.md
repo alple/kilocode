@@ -4,7 +4,7 @@ title: 'JetBrains plugin: provider selection alongside model selection'
 status: In Progress
 assignee: []
 created_date: '2026-10-06 07:27'
-updated_date: '2026-10-06 12:27'
+updated_date: '2026-10-06 12:34'
 labels:
   - 'wayfinder:map'
 dependencies: []
@@ -44,6 +44,8 @@ A **decided design** (not an implementation) for choosing *which server routes a
 - Whether the decided pattern should carry over to the CLI TUI and VS Code Agent Manager (nice-to-have per user).
 
 ## Out of scope
+
+- **Implementation of the decided design** — this map produces decisions only; the work now lives in the feature root [JetBrains plugin: implement model + route picking (OpenRouter and marked providers)](KILO-8), starting with its planning ticket [Plan the implementation: seed build tickets from the decided design](KILO-8.1).
 <!-- SECTION:DESCRIPTION:END -->
 
 ## Acceptance Criteria
