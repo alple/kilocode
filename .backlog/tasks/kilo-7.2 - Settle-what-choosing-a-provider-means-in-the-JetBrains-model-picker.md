@@ -1,9 +1,11 @@
 ---
 id: KILO-7.2
 title: Settle what "choosing a provider" means in the JetBrains model picker
-status: To Do
-assignee: []
+status: In Progress
+assignee:
+  - dev1
 created_date: '2026-10-06 07:27'
+updated_date: '2026-10-06 07:35'
 labels:
   - 'wayfinder:grilling'
 dependencies:
