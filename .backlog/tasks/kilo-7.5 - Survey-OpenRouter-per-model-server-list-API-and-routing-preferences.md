@@ -5,7 +5,7 @@ status: Done
 assignee:
   - dev1
 created_date: '2026-10-06 09:13'
-updated_date: '2026-10-06 09:19'
+updated_date: '2026-10-06 11:12'
 labels:
   - 'wayfinder:research'
 dependencies: []
@@ -45,5 +45,11 @@ Resolved. Findings doc: `.kilo/plans/wayfinder/kilo-7.5-openrouter-endpoints.md`
 3. **Pinning one server**: `provider: { order: ["<slug>/<variant>"], allow_fallbacks: false }` (base slug matches all variants; full tag pins exactly one; `only` equivalent). Setting `order`/`sort` disables load balancing.
 4. **kilo.json interim works, two gotchas**: options flow config → request.ts:112 → transform.ts:1723 → SDK spreads `providerOptions.openrouter` verbatim into the body. Gotcha 1: `OpenRouterProviderOptions` has no `provider` key — untyped passthrough (works, invisible to TS). Gotcha 2: keys must be snake_case (`allow_fallbacks`) and `order` values must be slugs, not display names — map via endpoint `tag`.
 5. Implication for the live route list: the CLI proxy endpoint can be thin (pass-through + slug/tag mapping), and latency/throughput fields need an authenticated call — an unauthenticated route list shows pricing/uptime/quantization but not latency percentiles.
+---
+
+author: wayfinder
+created: 2026-10-06 11:12
+---
+Findings doc relocated from `.kilo/plans/wayfinder/kilo-7.5-openrouter-endpoints.md` to Backlog document **doc-2** (`wayfinder/doc-2 — KILO-7.5 — OpenRouter endpoints API and routing preferences survey`). Loose-file findings are discontinued — rule: findings/plans/specs live on the board (AGENTS.md → Issue tracker).
 ---
 <!-- COMMENTS:END -->
