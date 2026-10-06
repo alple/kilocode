@@ -1,9 +1,11 @@
 ---
 id: KILO-7.1
 title: Map the existing provider/model selection surface in the JetBrains plugin
-status: To Do
-assignee: []
+status: In Progress
+assignee:
+  - dev1
 created_date: '2026-10-06 07:27'
+updated_date: '2026-10-06 07:27'
 labels:
   - 'wayfinder:research'
 dependencies: []
