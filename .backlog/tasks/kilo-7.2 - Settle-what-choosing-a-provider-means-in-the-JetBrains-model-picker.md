@@ -5,7 +5,7 @@ status: In Progress
 assignee:
   - dev1
 created_date: '2026-10-06 07:27'
-updated_date: '2026-10-06 07:40'
+updated_date: '2026-10-06 07:47'
 labels:
   - 'wayfinder:grilling'
 dependencies:
@@ -21,11 +21,11 @@ ordinal: 11000
 <!-- SECTION:DESCRIPTION:BEGIN -->
 ## Question
 
-What does "choose the provider in addition to the model" mean for the user in the JetBrains picker — settled intent: **routing a given model through a chosen provider** (e.g. glm-5.3-flash served by OpenRouter instead of the default provider). The routing capability exists mechanically (`(providerID, modelID)` rows → `selectModel` → per-turn `PromptDto`), so the decision is about what blocks it in practice and what the UX must expose:
+What does "choose the provider in addition to the model" mean for the user in the JetBrains picker — **settled: routing a given model to a chosen serving server inside its provider** (OpenRouter sub-providers like parasail, digitalocean for glm-5.3-flash). Remaining sub-decisions for this ticket:
 
-- **Disambiguation**: when the same model is offered by 2+ providers, rows render identically (model name only; provider label only on favorites; Recommended section doesn't name its provider). How should duplicates be shown?
-- **Reachability**: did the user's OpenRouter models even appear in their picker? (runtime fact from the user; if not, is the filter wrong or the connect state?)
-- **Selection affordance**: is picking the right row enough, or does the user want an explicit provider step/filter inside the popup?
+- Confirm the intent excludes catalog-provider disambiguation (rows already carry that).
+- Does the user prefer config-defined routes (kilo.json custom model entries, no code) or an in-picker route choice (needs CLI + JetBrains work), or config-first then UI?
+- Persistence semantics: route as a default (per model/agent) vs per-session pick.
 
-This is a HITL grilling session with the user; the decision lands as a resolution comment naming the chosen intent and what it explicitly excludes.
+HITL grilling session with the user; the decision lands as a resolution comment naming the chosen intent and what it explicitly excludes.
 <!-- SECTION:DESCRIPTION:END -->
