@@ -1,11 +1,11 @@
 ---
 id: KILO-7.3
 title: 'Decide the picker shape: extend, duplicate, or new provider picker'
-status: In Progress
+status: Done
 assignee:
   - dev1
 created_date: '2026-10-06 07:27'
-updated_date: '2026-10-06 09:19'
+updated_date: '2026-10-06 11:02'
 labels:
   - 'wayfinder:grilling'
 dependencies:
@@ -34,3 +34,21 @@ Also settle: do route choices ride the existing `(providerID, modelID)` selectio
 
 HITL grilling session with the user; ADR likely warranted (hard to reverse, real trade-offs, surprising without context).
 <!-- SECTION:DESCRIPTION:END -->
+
+## Comments
+
+<!-- COMMENTS:BEGIN -->
+author: wayfinder
+created: 2026-10-06 11:02
+---
+Resolved. The decision:
+
+1. **Shape: Deluxe-owned parameter component.** New fork-owned files own the model/route/effort/lock UI; the upstream `ModelPicker`/`PickerPopup`/rows/renderer stay untouched for routes. The only upstream edit is the session-header binding swap (`PromptPanel.kt:148-153` / `SessionUi.kt:705-724`, ~12-line scale — matching the rewind-feature precedent). Models settings, New Worktree dialog, and AgentsConfigurable keep the upstream picker unchanged.
+2. **Location: fork-marked package directory** (e.g. `ai.kilocode.client.deluxe` or `client/session/ui/param`) — ownership visible, upstream syncs never touch it. First fork-marked package convention in this plugin.
+3. **List UI: reuse upstream generic `PickerPopup`** as the popup shell (2 usages, stable); fork-owned renderer/rows for route data.
+4. **Route transport: per-turn like variant** — rides the request like reasoning effort does (variant precedent: ReasoningPicker keyed provider/model; session-local state). No `ModelSelectionDto` / `model.json` schema change; the freeze stores route+effort in session-local state alongside the existing prefs.
+5. ADR created: `docs/adr/0001-deluxe-owned-route-picker.md`.
+
+Evidence: KILO-7.1 findings + call-site blast radius (all sites listed in the question); git delta vs upstream/main showing the rewind precedent (SessionUi.kt +12, SessionController.kt +82, same-package new files).
+---
+<!-- COMMENTS:END -->
