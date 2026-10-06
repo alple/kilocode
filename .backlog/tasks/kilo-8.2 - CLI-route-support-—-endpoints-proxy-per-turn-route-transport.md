@@ -5,7 +5,7 @@ status: To Do
 assignee:
   - dev1
 created_date: '2026-10-06 13:04'
-updated_date: '2026-10-06 14:05'
+updated_date: '2026-10-06 14:06'
 labels: []
 dependencies: []
 parent_task_id: KILO-8
@@ -85,3 +85,12 @@ Design facts (verified in-code + doc-2 survey): `PromptPayload` derives from `Se
 - Shared-file edits are ~6 marker lines across prompt.ts/llm.ts/request.ts + 1 registration block line set in api.ts; all other files Kilo-owned.
 - `kiloProviderOptions` passes the openrouter namespace through verbatim, so the gateway transport needs no changes; verified `restOpenrouterOptions` spread reaches the body as `provider`.
 <!-- SECTION:PLAN:END -->
+
+## Comments
+
+<!-- COMMENTS:BEGIN -->
+created: 2026-10-06 14:06
+---
+Handoff for implementation (2026-10-06): researched and planned in a prior session, deliberately NOT implemented there — this session was spent verifying every fact in the Implementation Plan against the code (line anchors below the plan are current as of that day; re-grep if the tree moved). The plan is self-contained: pipeline facts, thread-through chain, file-by-file steps, gotchas, test harness pattern, and check commands are all recorded — no re-research needed. OpenRouter API facts live in Backlog document doc-2 (KILO-7.5 survey). Next session: claim (assign) + In Progress, then implement plan sections 1→3 in order. Note: repo git identity is intentionally left as the user's own — do not touch git config (AGENTS.md → Anonymity).
+---
+<!-- COMMENTS:END -->
