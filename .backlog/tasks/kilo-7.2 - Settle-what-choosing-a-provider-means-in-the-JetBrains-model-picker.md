@@ -5,7 +5,7 @@ status: Done
 assignee:
   - dev1
 created_date: '2026-10-06 07:27'
-updated_date: '2026-10-06 11:12'
+updated_date: '2026-10-06 13:48'
 labels:
   - 'wayfinder:grilling'
 dependencies:
