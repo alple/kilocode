@@ -4,6 +4,8 @@ Kilo CLI is an open source AI coding agent that generates code from natural lang
 
 - ALWAYS USE PARALLEL TOOLS WHEN APPLICABLE.
 - The default branch in this repo is `main`.
+- **Treat upstream as Kilo Code** (`upstream` remote = `Kilo-Org/kilocode`). This repo is the **Deluxe edition** — a fork of Kilo Code. Judge every change's conflict surface against Kilo Code, not against opencode (the opencode merge notes below describe Kilo-Org's own upstream, not this fork's).
+- **Prefer Deluxe-owned implementations** — this fork's own components, dialogs, and windows — over editing Kilo Code UI code. Stay away from Kilo Code UI: keep edits inside upstream UI files as small as possible, and build new surfaces in fork-owned files instead.
 - **NEVER commit automatically.** Only create commits when the user explicitly asks, and only after they have reviewed the changes (show `git status` + `git diff` first). This overrides the automation preference above for anything that writes history (`commit`, `amend`, `push`). Stage changes only if asked.
 - Prefer automation: execute requested actions without confirmation unless blocked by missing info or safety/irreversibility.
 - You may be running in a git worktree. All changes must be made in your current working directory — never modify files in the main repo checkout.
@@ -228,6 +230,7 @@ Load skills from: .agents/skills
 
 - **Tracker data never rides development branches**: never stage, commit, or ship `.backlog/` changes in a feature PR. The board is readable/writable from any branch through the symlink; board commit/push handling (incl. stale uncommitted work): backlog.md → "Board commits and pushes". The `issue-tracker` branch is an orphan kept local to this clone — agents never push it.
 - **Overrides the skills**: "publish to `.scratch/`", `Status:` lines, wayfinder maps there → Backlog tasks instead (wayfinder maps = parent+child tasks with native `dependencies`); mapping table: `docs/agents/issue-tracker.md`. Don't "fix" the skills — upstream.
+- **Findings, plans, and specs live on the board, not as loose files**: research findings, wayfinder assets, implementation plans, and specs are Backlog **documents** (backlog MCP `document_*` tools) or the resolving ticket's comments — never standalone files in `.kilo/plans/`, `.scratch/`, or ad-hoc repo `.md` files. `.kilo/plans/` is reserved for Plan-mode files only. ADRs stay in `docs/adr/`, user-facing docs in `docs/`.
 
 ### Triage labels
 

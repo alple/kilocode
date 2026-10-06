@@ -14,6 +14,7 @@ Skills still speak in legacy local-markdown terms (feature directories, buckets,
 | Wayfinder map/child tickets | Backlog feature root (`wayfinder:map` label) + child tasks — see "Wayfinding operations" below |
 | Wayfinder `ready-for-agent` / `ready-for-human` | Labels, not board statuses: `ready` (= ready-for-agent); ready-for-human = the **`Testing` status** |
 | Legacy `.scratch/` paths (in old ADRs, docs, comments) | Never write to `.scratch/` — the tracker is Backlog.md, not a feature-dir tree |
+| Research-skill findings as repo Markdown files / wayfinder assets / plan docs | Backlog **document** (`backlog_document_create`, e.g. path `wayfinder/`) or the resolving ticket's comments — never standalone files (`.kilo/plans/` is Plan-mode only; never `.scratch/`) |
 
 **Task lifecycle:** canonical spec: backlog.md → "Ticket flow"; always-loaded gate summary: AGENTS.md → "Task lifecycle".
 
