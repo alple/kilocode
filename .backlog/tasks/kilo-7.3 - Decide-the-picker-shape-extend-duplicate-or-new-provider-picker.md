@@ -4,6 +4,7 @@ title: 'Decide the picker shape: extend, duplicate, or new provider picker'
 status: To Do
 assignee: []
 created_date: '2026-10-06 07:27'
+updated_date: '2026-10-06 09:09'
 labels:
   - 'wayfinder:grilling'
 dependencies:
@@ -19,13 +20,16 @@ ordinal: 12000
 <!-- SECTION:DESCRIPTION:BEGIN -->
 ## Question
 
-Given the settled intent (KILO-7.2) and the mapped surface (KILO-7.1): which implementation shape wins for the JetBrains plugin?
+Given the settled intent (KILO-7.2: in-picker route choice + frozen session parameters), which implementation shape wins under the Deluxe fork strategy — **prefer Deluxe-owned implementations; stay away from Kilo Code UI; keep edits inside upstream UI files as small as possible**?
 
-- **Extend** the existing `ModelPicker` popup (sections/level-two navigation inside it).
-- **Duplicate** the picker and extend the copy.
-- **New separate provider-level picker** alongside it.
+User lean (stated 2026-10-06): build a **Deluxe-owned parameter component** that injects model/route/effort, rather than leaning on the upstream `ModelPicker`/`PickerPopup`, because those will keep changing in Kilo Code and edits there conflict on every upstream sync. This ticket formalizes it:
 
-Constraint framing for this decision (already established): `packages/kilo-jetbrains/` is entirely Kilo-owned — there is no opencode upstream to conflict with, so the TUI fork-conflict calculus does not transfer. The real trade-offs are shared-code churn (`ModelPicker` is reused by models settings + New Worktree dialog + session UI), the RPC DTO contract with the CLI, and cross-surface consistency. The decision records the shape, why the losers lost, and any contract changes the shape implies.
+- **Deluxe-owned parameter component** (new, fork-owned files) vs **minimal in-place edits** to upstream `ModelPicker`/`PickerPopup` vs **subclass/wrapper** around the upstream picker.
+- Blast radius when touching upstream picker code (call sites from KILO-7.1): `PromptPanel` session header (`PromptPanel.kt:148-153`, bound `SessionUi.kt:705-724`), Models settings (`ModelsSettingsUi.kt` via `modelItems`), New Worktree dialog (`NewWorktreeDialog.kt:271-285`), AgentsConfigurable (`AgentsConfigurable.kt:413`), plus renderer/rows/tests. Each site's consequence per option must be listed.
+- Where the Deluxe component lives (module: `frontend/`, package convention for fork-owned code) and how it reuses vs duplicates upstream pieces (`PickerPopup` is generic; `ModelPicker` is the upstream-specific layer).
+- What contract changes the shape implies (route list DTO, freeze state).
 
-HITL grilling session with the user.
+Also settle: do route choices ride the existing `(providerID, modelID)` selection, or does the selection unit grow to `(providerID, modelID, route)` (affects `PromptDto`, `ModelSelectionDto`, `model.json` schema — CLI-side change named in KILO-7.1 §4)?
+
+HITL grilling session with the user; ADR likely warranted (hard to reverse, real trade-offs, surprising without context).
 <!-- SECTION:DESCRIPTION:END -->
