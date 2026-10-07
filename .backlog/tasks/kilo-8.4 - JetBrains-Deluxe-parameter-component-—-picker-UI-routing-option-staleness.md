@@ -4,7 +4,7 @@ title: 'JetBrains: Deluxe parameter component — picker UI, routing option, sta
 status: Done
 assignee: []
 created_date: '2026-10-06 13:05'
-updated_date: '2026-10-07 12:50'
+updated_date: '2026-10-07 15:33'
 labels: []
 dependencies:
   - KILO-8.2
@@ -70,6 +70,11 @@ Design notes: popup stays open (Mode.Multi) so model→route→effort can be set
 created: 2026-10-07 10:31
 ---
 Continuation context: all work lives in the working tree (git status shows 12 modified + 6 new files, none committed). Files: shared/src/main/kotlin/ai/kilocode/rpc/dto/RouteEndpointDto.kt (new), shared/…/KiloWorkspaceRpcApi.kt, backend/…/cli/KiloCliDataParser.kt (parseRoutes + imports), backend/…/rpc/KiloWorkspaceRpcApiImpl.kt (routes impl), frontend/…/app/KiloWorkspaceService.kt (routes wrapper), frontend/…/deluxe/{KiloRoutingOptions,KiloParameterRows,KiloParameterRenderer,KiloParameterPicker,KiloRoutingConfigurable}.kt, frontend/…/session/model/SessionModel.kt, …/session/controller/SessionController.kt, …/session/SessionUi.kt, …/session/ui/prompt/PromptPanel.kt, frontend/…/settings/KiloSettingsConfigurable.kt, frontend/src/main/resources/kilo.jetbrains.frontend.xml + messages/KiloBundle.properties, frontend/src/test/…/testing/FakeWorkspaceRpcApi.kt. Full design + decisions live in the tickets KILO-7.2/7.3/7.6, ADR-0001/0002 and docs/adr/. Re-read this ticket's two comments before continuing; this comment ends the parking note.
+---
+
+created: 2026-10-07 15:33
+---
+Field test of the lux4 zip: the parameter component behaved as designed on both reported points. (1) "No routing" was the gate — Model Routing defaulted off and all route UI is hidden without it (KILO-7.6); the route fetch path itself is healthy (bundled CLI returned a live route list). Default flips to on via KILO-8.5. (2) The frozen effort was the lock-at-first-message design; the unlock lives in the popup's Lock row and was not noticed. Retest after KILO-8.5 lands and re-judge Lock-row discoverability then.
 ---
 <!-- COMMENTS:END -->
 
