@@ -27,24 +27,23 @@ internal fun resolveSessionDefaultModel(
     ready: Boolean,
     first: ModelSelectionDto?,
 ): ModelSelectionDto? {
-    if (ready) return resolveModelSelection(
+    // Pre-READY bootstrap degrades to the first picker item: the wire's `defaults` map carries
+    // providerID → bare model ID, which `modelSelection` could never parse, so the old pre-READY
+    // branch was dead code.
+    if (!ready) return first
+    return resolveModelSelection(
         providers = providers,
         mode = config?.agent?.get(agent)?.model?.let(::modelSelection),
         global = config?.model?.let(::modelSelection),
         recent = state.recent,
     )
-    return resolveModelSelection(
-        providers = providers,
-        mode = providers?.defaults?.get(agent)?.let(::modelSelection),
-        global = providers?.defaults?.values?.firstNotNullOfOrNull(::modelSelection),
-        fallback = null,
-    ) ?: first
 }
 
 /** Resolves the effective model for a blank session, including its persisted per-agent override. */
 internal fun resolveSessionModel(
     providers: ProvidersDto?,
     agent: String,
+    stored: ModelSelectionDto?,
     state: ModelStateDto,
     config: ConfigDto?,
     default: ModelSelectionDto?,
@@ -52,23 +51,27 @@ internal fun resolveSessionModel(
     val saved = state.model[agent]
     if (config != null) return resolveModelSelection(
         providers = providers,
+        stored = stored,
         override = saved,
         mode = config.agent[agent]?.model?.let(::modelSelection),
         global = config.model?.let(::modelSelection),
         recent = state.recent,
     )
+    validModelSelection(providers, stored)?.let { return it }
     if (saved != null) return validModelSelection(providers, saved) ?: default
     return default
 }
 
 private fun resolveModelSelection(
     providers: ProvidersDto?,
+    stored: ModelSelectionDto? = null,
     override: ModelSelectionDto? = null,
     mode: ModelSelectionDto? = null,
     global: ModelSelectionDto? = null,
     recent: List<ModelSelectionDto> = emptyList(),
     fallback: ModelSelectionDto? = ModelSelectionDto(KILO_PROVIDER, KILO_AUTO_MODEL),
 ): ModelSelectionDto? {
+    validModelSelection(providers, stored)?.let { return it }
     validModelSelection(providers, override)?.let { return it }
     validModelSelection(providers, mode)?.let { return it }
     validModelSelection(providers, global)?.let { return it }

@@ -1,6 +1,5 @@
 package ai.kilocode.client.session.controller
 
-import ai.kilocode.client.plugin.KiloPluginSettings
 import ai.kilocode.rpc.dto.AgentDto
 import ai.kilocode.rpc.dto.AgentConfigDto
 import ai.kilocode.rpc.dto.ConfigDto
@@ -35,7 +34,8 @@ class ConfigSelectionTest : SessionControllerTestBase() {
         edt { first.selectModel("kilo", "opus") }
         flush()
 
-        assertTrue(appRpc.selections.isEmpty())
+        // The pick persists per project (ADR-0002), not in the user-global model.json.
+        assertEquals("kilo/opus", store.model("code"))
         assertSession(
             """
             [code] [kilo/opus] [app: DISCONNECTED] [workspace: READY]
@@ -72,7 +72,7 @@ class ConfigSelectionTest : SessionControllerTestBase() {
         edt { m.selectAgent("plan") }
         flush()
 
-        assertEquals("plan", KiloPluginSettings.getAgent())
+        assertEquals("plan", store.getAgent())
         assertSession(
             """
             [plan] [app: DISCONNECTED] [workspace: PENDING]
@@ -83,7 +83,7 @@ class ConfigSelectionTest : SessionControllerTestBase() {
     }
 
     fun `test remembered mode seeds a new session ahead of the CLI default`() {
-        edt { KiloPluginSettings.setAgent("plan") }
+        edt { store.setAgent("plan") }
         projectRpc.state.value = workspaceReady(
             agents = listOf(
                 AgentDto(name = "code", displayName = "Code", mode = "code"),
@@ -99,7 +99,7 @@ class ConfigSelectionTest : SessionControllerTestBase() {
     }
 
     fun `test CLI default wins when the remembered mode no longer exists`() {
-        edt { KiloPluginSettings.setAgent("removed-mode") }
+        edt { store.setAgent("removed-mode") }
         projectRpc.state.value = workspaceReady(default = "code")
         val m = controller()
         collect(m)
@@ -382,7 +382,9 @@ class ConfigSelectionTest : SessionControllerTestBase() {
         flush()
 
         assertEquals("high", first.model.variant)
-        assertEquals("low", second.model.variant)
-        assertTrue(appRpc.variants.isEmpty())
+        // Never-picked effort stays Auto (null = provider default); no forced first variant.
+        assertEquals(null, second.model.variant)
+        assertEquals("high", store.variant("kilo/gpt-5"))
+        assertEquals(null, appRpc.models.variant["kilo/gpt-5"])
     }
 }

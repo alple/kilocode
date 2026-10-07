@@ -4,6 +4,7 @@ import ai.kilocode.client.KiloNotifications
 import ai.kilocode.client.app.KiloAppService
 import ai.kilocode.client.app.KiloSessionService
 import ai.kilocode.client.app.Workspace
+import ai.kilocode.client.deluxe.KiloProjectParameterStore
 import ai.kilocode.client.plugin.KiloBundle
 import ai.kilocode.client.session.background.BackgroundAgents
 import ai.kilocode.client.session.model.AgentItem
@@ -47,6 +48,8 @@ import ai.kilocode.rpc.dto.MessageDto
 import ai.kilocode.rpc.dto.MessageErrorDto
 import ai.kilocode.rpc.dto.MessageWithPartsDto
 import ai.kilocode.rpc.dto.ModelSelectionDto
+import ai.kilocode.rpc.dto.ModelStateDto
+import ai.kilocode.rpc.dto.ConfigDto
 import ai.kilocode.rpc.dto.ProfileDto
 import ai.kilocode.rpc.dto.ProfileStatusDto
 import ai.kilocode.rpc.dto.PermissionAlwaysRulesDto
@@ -98,6 +101,7 @@ class SessionController(
   private val sessions: KiloSessionService,
   private val workspace: Workspace,
   private val app: KiloAppService,
+  private val store: KiloProjectParameterStore,
   private val cs: CoroutineScope,
   private val comp: Component? = null,
   private val flushMs: Long = EVENT_FLUSH_MS,
@@ -210,6 +214,14 @@ class SessionController(
     private var prefOverride = false
     private var prefVariantKey: String? = null
     private var prefVariant: String? = null
+    // Session-local route pin (per-turn OpenRouter routing tag), keyed to the model it was picked
+    // for like [prefVariantKey]. Falls back to the project store in [routeFor].
+    private var prefRouteKey: String? = null
+    private var prefRoute: String? = null
+    // The tier inputs the last selection resolution was based on, so [syncBackgroundSelection] can
+    // tell a late bootstrap arrival from tier churn.
+    private var resolvedModels: ModelStateDto = ModelStateDto()
+    private var resolvedConfig: ConfigDto? = null
     private var modelTime: Double? = null
     // A Stop this UI asked for, so the abort it produces reads as "Stopped" rather than a failure.
     // Reset on every turn open: the flag describes one cancellation, not the session.
@@ -845,10 +857,11 @@ class SessionController(
      * Switch this session's mode.
      *
      * Stays entirely client-side. The pick lives on [SessionModel.agent] for this session and in
-     * [KiloPluginSettings] as the mode the next new session opens with, and it reaches the CLI only
-     * as [PromptDto.agent] on each turn. It must never be written to the CLI's global config: the
-     * CLI disposes every instance it holds when that file changes, which cancels every running turn
-     * in every worktree. `NewWorktreeDialog` reached the same conclusion for its own picker.
+     * the project's [KiloProjectParameterStore] as the mode the next new session opens with, and it
+     * reaches the CLI only as [PromptDto.agent] on each turn. It must never be written to the CLI's
+     * global config: the CLI disposes every instance it holds when that file changes, which cancels
+     * every running turn in every worktree. `NewWorktreeDialog` reached the same conclusion for its
+     * own picker.
      */
     fun selectAgent(name: String) {
         assertEdt()
@@ -860,7 +873,7 @@ class SessionController(
         prefOverride = false
         prefVariantKey = null
         prefVariant = null
-        KiloPluginSettings.setAgent(name)
+        store.setAgent(name)
         fire(SessionControllerEvent.WorkspaceReady) {
             model.agent = name
             syncModelSelection()
@@ -880,6 +893,8 @@ class SessionController(
         prefOverride = true
         prefVariantKey = null
         prefVariant = null
+        // The pick persists per project (ADR-0002): the next new session inherits it.
+        store.setModel(agent, provider, id)
         fire(SessionControllerEvent.WorkspaceReady) {
             selectResolvedModel(key)
             model.modelOverride = model.defaultModel != model.model
@@ -897,6 +912,8 @@ class SessionController(
         prefModel = auto
         prefAgent = agent
         prefOverride = false
+        // Resetting is an explicit return to the default, so the pick stops being inherited too.
+        store.clearModel(agent)
         fire(SessionControllerEvent.WorkspaceReady) {
             selectResolvedModel(auto)
             model.modelOverride = false
@@ -911,8 +928,27 @@ class SessionController(
         LOG.debug { "${ChatLogSummary.sid(sid ?: ref?.key ?: "pending")} kind=config variant=$key/$value" }
         prefVariantKey = key
         prefVariant = value
+        // The pick persists per project (ADR-0002): the next new session inherits it.
+        store.setVariant(key, value)
         model.variant = value
         capture("Reasoning Variant Selected", sessionProps() + mapOf("model" to key, "variant" to value))
+    }
+
+    /**
+     * Pin the OpenRouter route used from the next turn onward, or clear the pin with null (Auto).
+     *
+     * The pin is keyed to the currently selected model like [selectVariant] and persists per
+     * project in [store]; the picker UI and route list land with the parameter component ticket.
+     */
+    fun selectRoute(value: String?) {
+        assertEdt()
+        val key = model.model ?: return
+        val route = value?.trim()?.takeIf { it.isNotEmpty() }
+        LOG.debug { "${ChatLogSummary.sid(sid ?: ref?.key ?: "pending")} kind=config route=$key/$route" }
+        prefRouteKey = key
+        prefRoute = route
+        if (route == null) store.clearRoute(key) else store.setRoute(key, route)
+        capture("Route Selected", sessionProps() + mapOf("model" to key, "route" to (route ?: "auto")))
     }
 
     /**
@@ -937,10 +973,14 @@ class SessionController(
                 prefOverride = true
                 prefVariantKey = key
                 prefVariant = select.variant
+                prefRouteKey = key
+                prefRoute = select.route
             } else {
                 prefOverride = false
                 prefVariantKey = null
                 prefVariant = null
+                prefRouteKey = null
+                prefRoute = null
             }
             syncModelSelection()
             model.refreshHeader()
@@ -1191,7 +1231,7 @@ class SessionController(
                     if (model.state is SessionState.LoginRequired && state.profile != null) {
                         resumeAfterLogin()
                     }
-                    syncModelSelection()
+                    syncBackgroundSelection()
                     syncConnectionState()
                     refreshAccountOverlay()
                 }
@@ -1201,7 +1241,7 @@ class SessionController(
         cs.launch {
             app.models.drop(1).collect {
                 fire(SessionControllerEvent.WorkspaceReady) {
-                    syncModelSelection()
+                    syncBackgroundSelection()
                 }
             }
         }
@@ -1259,7 +1299,19 @@ class SessionController(
                     if (this@SessionController.model.agent == null) {
                         this@SessionController.model.agent = seedAgent(state.agents)
                     }
-                    syncModelSelection()
+                    if (ref != null) {
+                        if (model.model == null) {
+                            // An opened session with no values yet still completes its bootstrap.
+                            syncModelSelection()
+                        } else {
+                            // Catalog refresh for an opened session: the variant list may have
+                            // changed, but the selection itself never re-resolves on a background
+                            // event (ADR-0002).
+                            refreshVariants()
+                        }
+                    } else {
+                        syncBackgroundSelection()
+                    }
                     model.refreshHeader()
                 }
 
@@ -2318,6 +2370,7 @@ class SessionController(
      */
     private fun retryPrompt(): PromptDto? {
         val msg = model.messages().lastOrNull { it.info.role == "user" } ?: return null
+        val key = msg.info.providerID?.takeIf { msg.info.modelID != null }?.let { "$it/${msg.info.modelID}" }
         return PromptDto(
             parts = emptyList(),
             messageID = msg.info.id,
@@ -2325,6 +2378,7 @@ class SessionController(
             modelID = msg.info.modelID,
             agent = msg.info.agent,
             variant = model.variant?.takeIf { it in model.variants },
+            route = routeFor(key),
             noReply = false,
         )
     }
@@ -2340,10 +2394,13 @@ class SessionController(
     private fun retryPromptCurrent(): PromptDto? {
         val base = retryPrompt() ?: return null
         val sel = model.model?.let(::parseModel)
+        val provider = sel?.first ?: base.providerID
+        val modelId = sel?.second ?: base.modelID
         return base.copy(
-            providerID = sel?.first ?: base.providerID,
-            modelID = sel?.second ?: base.modelID,
+            providerID = provider,
+            modelID = modelId,
             agent = model.agent ?: base.agent,
+            route = routeFor(if (provider != null && modelId != null) "$provider/$modelId" else null),
         )
     }
 
@@ -2389,6 +2446,8 @@ class SessionController(
         // An explicit variant comes from the dialog before the model catalog is loaded, so it can't
         // be validated against model.variants yet; only the fallback is filtered.
         val variant = select?.variant ?: model.variant?.takeIf { it in model.variants }
+        val key = if (provider != null && modelId != null) "$provider/$modelId" else null
+        val route = select?.route?.takeIf { it.isNotBlank() } ?: routeFor(key)
         val parts = buildList {
             text.takeIf { it.isNotBlank() }?.let { add(PromptPartDto(type = "text", text = it)) }
             addAll(files)
@@ -2399,8 +2458,18 @@ class SessionController(
             modelID = modelId,
             agent = agent,
             variant = variant,
+            route = route,
             editorContext = editorContext,
         )
+    }
+
+    /**
+     * The route pin for [key] ("provider/model"), if any: the session-local pin wins when it was
+     * picked for this model, otherwise the project store's remembered route.
+     */
+    private fun routeFor(key: String?): String? {
+        if (key == null) return null
+        return prefRoute?.takeIf { prefRouteKey == key } ?: store.route(key)?.takeIf { it.isNotBlank() }
     }
 
     private fun syncModelSelection() {
@@ -2408,11 +2477,14 @@ class SessionController(
         val providers = model.workspace.providers
         val state = app.models.value
         val cfg = model.app.config
+        resolvedModels = state
+        resolvedConfig = cfg
         val auto = resolvedDefaultModel(agent)?.key
         val preferred = messageSelection(agent)
         val selected = preferred?.key ?: resolveSessionModel(
             providers = providers,
             agent = agent,
+            stored = store.model(agent)?.let(::modelSelection),
             state = state,
             config = cfg,
             default = auto?.let(::modelSelection),
@@ -2420,6 +2492,35 @@ class SessionController(
         model.defaultModel = auto
         selectResolvedModel(selected)
         model.modelOverride = (preferred == null || prefOverride) && selected != auto
+    }
+
+    /**
+     * Re-resolution policy for background events (ADR-0002's on-demand-only contract).
+     *
+     * An opened session keeps its selection — its values come from its own history or an explicit
+     * user action, so catalog reloads, config patches, and model-state refreshes never re-resolve
+     * it. A blank session resolves fresh from the store, and bootstrap can beat the tier inputs:
+     * while the tier data a resolution was based on has not changed since, a late model.json/config
+     * arrival re-runs the default resolution once. Tier churn that does not affect the chain (a
+     * favorites refresh, another surface's pick) never changes a resolved selection, and neither
+     * does the store growing — inheritance happens at resolution time, not retroactively.
+     */
+    private fun syncBackgroundSelection() {
+        if (model.model != null && ref != null) return
+        val models = app.models.value
+        val config = model.app.config
+        if (model.model != null && tierShape(models) == tierShape(resolvedModels) && config == resolvedConfig) return
+        syncModelSelection()
+    }
+
+    /** The model.json tier fields the resolution chain actually reads. */
+    private fun tierShape(state: ModelStateDto) = Triple(state.model, state.variant, state.recent)
+
+    /** Refresh the variant list and its validity from the catalog without re-resolving the selection. */
+    private fun refreshVariants() {
+        val key = model.model ?: return
+        model.variants = item(key)?.variants ?: emptyList()
+        if (model.variant != null && model.variant !in model.variants) model.variant = null
     }
 
     private fun resolvedDefaultModel(agent: String): ModelSelectionDto? {
@@ -2439,10 +2540,14 @@ class SessionController(
         val item = key?.let(::item)
         model.variants = item?.variants ?: emptyList()
         val pref = prefVariant?.takeIf { prefVariantKey == key }
+        // The project store tier is JetBrains' own effort pick; the machine-global model.json
+        // variant map stays a lower read tier. Never-picked effort stays Auto (null = provider
+        // default); no forced first variant.
+        val stored = key?.let { store.variant(it) }
         val saved = key?.let { app.models.value.variant[it] }
         model.variant = pref?.takeIf { it in model.variants }
+            ?: stored?.takeIf { it in model.variants }
             ?: saved?.takeIf { it in model.variants }
-            ?: model.variants.firstOrNull()
         model.refreshHeader()
     }
 
@@ -2480,7 +2585,7 @@ class SessionController(
      * gone (renamed, hidden, or removed from a different config).
      */
     private fun seedAgent(agents: AgentsDto?): String? {
-        return resolveSessionAgent(agents, KiloPluginSettings.getAgent())
+        return resolveSessionAgent(agents, store.getAgent())
     }
 
     private fun syncHistoryAgent(items: List<MessageWithPartsDto>) {
@@ -3095,15 +3200,16 @@ private fun unsupported(reason: String?, directory: String): String {
 }
 
 /**
- * An explicit agent / provider / model / reasoning selection to attach to a single prompt. Used by
- * the New Worktree flow so the first turn runs with the mode and model picked in the dialog rather
- * than whatever the freshly-opened session resolves as its default.
+ * An explicit agent / provider / model / reasoning / route selection to attach to a single prompt.
+ * Used by the New Worktree flow so the first turn runs with the mode and model picked in the dialog
+ * rather than whatever the freshly-opened session resolves as its default.
  */
 data class PromptSelection(
     val agent: String? = null,
     val provider: String? = null,
     val model: String? = null,
     val variant: String? = null,
+    val route: String? = null,
 )
 
 private fun parseModel(value: String): Pair<String, String>? {

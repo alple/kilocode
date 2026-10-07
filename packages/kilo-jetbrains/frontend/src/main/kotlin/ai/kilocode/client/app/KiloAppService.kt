@@ -12,9 +12,7 @@ import ai.kilocode.rpc.dto.LogConfigDto
 import ai.kilocode.rpc.dto.LogFileDto
 import ai.kilocode.rpc.dto.ModelFavoriteUpdateDto
 import ai.kilocode.rpc.dto.ModelSelectionDto
-import ai.kilocode.rpc.dto.ModelSelectionUpdateDto
 import ai.kilocode.rpc.dto.ModelStateDto
-import ai.kilocode.rpc.dto.ModelVariantUpdateDto
 import ai.kilocode.rpc.dto.ProfileDto
 import ai.kilocode.rpc.dto.RetentionStatusDto
 import ai.kilocode.rpc.dto.RetentionPatchDto
@@ -280,32 +278,6 @@ class KiloAppService internal constructor(
             } catch (e: Exception) {
                 LOG.warn("model favorite update failed", e)
                 setModelState(_models.value.copy(favorite = prev))
-            }
-        }
-    }
-
-    fun selectModel(agent: String, providerID: String, modelID: String) {
-        val prev = _models.value
-        setModelState(prev.copy(model = prev.model + (agent to ModelSelectionDto(providerID, modelID))))
-        cs.launch {
-            try {
-                setModelState(call { updateModelSelection(ModelSelectionUpdateDto(agent, providerID, modelID)) })
-            } catch (e: Exception) {
-                LOG.warn("model selection update failed", e)
-                setModelState(prev)
-            }
-        }
-    }
-
-    fun selectVariant(key: String, value: String) {
-        val prev = _models.value
-        setModelState(prev.copy(variant = prev.variant + (key to value)))
-        cs.launch {
-            try {
-                setModelState(call { updateModelVariant(ModelVariantUpdateDto(key, value)) })
-            } catch (e: Exception) {
-                LOG.warn("model variant update failed", e)
-                setModelState(prev)
             }
         }
     }

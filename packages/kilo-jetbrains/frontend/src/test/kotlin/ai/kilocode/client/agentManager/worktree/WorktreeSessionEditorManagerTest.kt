@@ -5,6 +5,7 @@ import ai.kilocode.client.app.KiloAppService
 import ai.kilocode.client.app.KiloSessionService
 import ai.kilocode.client.app.KiloWorkspaceService
 import ai.kilocode.client.app.Workspace
+import ai.kilocode.client.deluxe.KiloProjectParameterStore
 import ai.kilocode.client.onboarding.providers.v5migration.FakeMigrationUiController
 import ai.kilocode.client.onboarding.providers.v5migration.MigrationUiState
 import ai.kilocode.client.onboarding.FakeOnboardingController
@@ -688,6 +689,7 @@ class WorktreeSessionEditorManagerTest : BasePlatformTestCase() {
         sessions = sessions,
         workspace = workspace,
         app = app,
+        store = KiloProjectParameterStore(),
         cs = coroutines.scope,
         timers = timers,
     )

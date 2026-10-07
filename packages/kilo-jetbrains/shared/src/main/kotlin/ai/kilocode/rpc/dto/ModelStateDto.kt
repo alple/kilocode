@@ -22,16 +22,3 @@ data class ModelFavoriteUpdateDto(
     val providerID: String,
     val modelID: String,
 )
-
-@Serializable
-data class ModelSelectionUpdateDto(
-    val agent: String,
-    val providerID: String,
-    val modelID: String,
-)
-
-@Serializable
-data class ModelVariantUpdateDto(
-    val key: String,
-    val value: String,
-)

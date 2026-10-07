@@ -934,6 +934,10 @@ object KiloCliDataParser {
         if (variant != null) {
             sb.append(""","variant":${escape(variant)}""")
         }
+        val route = prompt.route
+        if (route != null) {
+            sb.append(""","route":${escape(route)}""")
+        }
         val editor = prompt.editorContext
         if (editor != null) {
             sb.append(""","editorContext":${editorContextJson(editor)}""")

@@ -13,9 +13,7 @@ import ai.kilocode.rpc.dto.LogConfigDto
 import ai.kilocode.rpc.dto.LogFileDto
 import ai.kilocode.rpc.dto.ModelFavoriteUpdateDto
 import ai.kilocode.rpc.dto.ModelSelectionDto
-import ai.kilocode.rpc.dto.ModelSelectionUpdateDto
 import ai.kilocode.rpc.dto.ModelStateDto
-import ai.kilocode.rpc.dto.ModelVariantUpdateDto
 import ai.kilocode.rpc.dto.PermissionConfigDto
 import ai.kilocode.rpc.dto.PermissionRuleDto
 import ai.kilocode.rpc.dto.ProfileDto
@@ -51,8 +49,6 @@ class FakeAppRpcApi : KiloAppRpcApi {
     var cliPlatformCalls = 0
         private set
     var models = ModelStateDto()
-    val selections = mutableListOf<ModelSelectionUpdateDto>()
-    val variants = mutableListOf<ModelVariantUpdateDto>()
     val configPatches = mutableListOf<ConfigPatchDto>()
     var retention = RetentionStatusDto()
     val retentionStatusCalls = AtomicInteger()
@@ -143,20 +139,6 @@ class FakeAppRpcApi : KiloAppRpcApi {
             else -> models.favorite
         }
         models = models.copy(favorite = next)
-        return models
-    }
-
-    override suspend fun updateModelSelection(update: ModelSelectionUpdateDto): ModelStateDto {
-        assertNotEdt("updateModelSelection")
-        selections.add(update)
-        models = models.copy(model = models.model + (update.agent to ModelSelectionDto(update.providerID, update.modelID)))
-        return models
-    }
-
-    override suspend fun updateModelVariant(update: ModelVariantUpdateDto): ModelStateDto {
-        assertNotEdt("updateModelVariant")
-        variants.add(update)
-        models = models.copy(variant = models.variant + (update.key to update.value))
         return models
     }
 

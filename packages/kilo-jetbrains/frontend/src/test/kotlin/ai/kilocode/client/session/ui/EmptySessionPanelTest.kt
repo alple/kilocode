@@ -4,6 +4,7 @@ import ai.kilocode.client.app.KiloAppService
 import ai.kilocode.client.app.KiloSessionService
 import ai.kilocode.client.app.KiloWorkspaceService
 import ai.kilocode.client.app.Workspace
+import ai.kilocode.client.deluxe.KiloProjectParameterStore
 import ai.kilocode.client.plugin.KiloBundle
 import ai.kilocode.client.session.SessionActivityKind
 import ai.kilocode.client.session.history.HistoryTime
@@ -67,6 +68,7 @@ class EmptySessionPanelTest : BasePlatformTestCase() {
             sessions = sessions,
             workspace = workspace,
             app = app,
+            store = KiloProjectParameterStore(),
             cs = scope,
             revertTimeoutMs = SessionController.REVERT_TIMEOUT_MS,
             open = { opened.add(it.id) },

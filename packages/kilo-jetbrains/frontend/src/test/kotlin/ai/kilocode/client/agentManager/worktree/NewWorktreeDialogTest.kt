@@ -2,6 +2,7 @@ package ai.kilocode.client.agentManager.worktree
 
 import ai.kilocode.client.app.KiloAppService
 import ai.kilocode.client.app.KiloWorkspaceService
+import ai.kilocode.client.deluxe.KiloProjectParameterStore
 import ai.kilocode.client.plugin.KiloPluginSettings
 import ai.kilocode.client.session.ui.ReasoningPicker
 import ai.kilocode.client.session.ui.mode.ModePicker
@@ -48,6 +49,7 @@ class NewWorktreeDialogTest : BasePlatformTestCase() {
     private lateinit var app: KiloAppService
     private lateinit var appRpc: FakeAppRpcApi
     private lateinit var workspaces: KiloWorkspaceService
+    private lateinit var store: KiloProjectParameterStore
     private lateinit var sessionRpc: FakeSessionRpcApi
     private var dialog: NewWorktreeDialog? = null
 
@@ -59,7 +61,9 @@ class NewWorktreeDialogTest : BasePlatformTestCase() {
         val ws = FakeWorkspaceRpcApi().apply { models = workspace() }
         workspaces = KiloWorkspaceService(scope, ws)
         sessionRpc = FakeSessionRpcApi()
-        KiloPluginSettings.unsetAgent()
+        // Fresh store per test: production resolves it from the project container, where it
+        // outlives dialogs; a fresh instance gives every test a clean pick set.
+        store = KiloProjectParameterStore()
     }
 
     override fun tearDown() {
@@ -68,7 +72,6 @@ class NewWorktreeDialogTest : BasePlatformTestCase() {
             dialog?.let { d -> edt { Disposer.dispose(d.disposable) } }
             dialog = null
             scope.cancel()
-            KiloPluginSettings.unsetAgent()
         } finally {
             super.tearDown()
         }
@@ -87,8 +90,8 @@ class NewWorktreeDialogTest : BasePlatformTestCase() {
     }
 
     fun `test loads the remembered normal session mode and its saved model`() {
-        KiloPluginSettings.setAgent("plan")
-        app.selectModel("plan", "kilo", "opus")
+        store.setAgent("plan")
+        store.setModel("plan", "kilo", "opus")
 
         open()
         flushUntil { edt { model().selectionKeyForTest() != null } }
@@ -143,7 +146,7 @@ class NewWorktreeDialogTest : BasePlatformTestCase() {
         // The prompt is the only place the pick travels: writing it to the CLI's global default_agent
         // disposed every instance the CLI held and cancelled every running turn in every worktree.
         assertEquals("plan", submitted().prompt?.agent)
-        assertNull(KiloPluginSettings.getAgent())
+        assertNull(store.getAgent())
     }
 
     fun `test selecting a model persists it for the default agent`() {
@@ -152,7 +155,9 @@ class NewWorktreeDialogTest : BasePlatformTestCase() {
 
         edt { model().onSelect(ModelPicker.Item("gpt-5", "GPT-5", "kilo", "Kilo", variants = listOf("low", "high"))) }
 
-        assertEquals(ModelSelectionDto("kilo", "gpt-5"), app.models.value.model["build"])
+        // Picks persist per project (ADR-0002), not in the user-global model.json.
+        assertEquals("kilo/gpt-5", store.model("build"))
+        assertEquals(null, app.models.value.model["build"])
     }
 
     fun `test selecting reasoning persists the variant for the current model`() {
@@ -161,7 +166,8 @@ class NewWorktreeDialogTest : BasePlatformTestCase() {
 
         edt { reasoning().onSelect(ReasoningPicker.Item("high", "High")) }
 
-        assertEquals("high", app.models.value.variant["kilo/gpt-5"])
+        assertEquals("high", store.variant("kilo/gpt-5"))
+        assertEquals(null, app.models.value.variant["kilo/gpt-5"])
     }
 
     fun `test creating forwards the prompt, resolved branch, and default selection`() {
@@ -185,7 +191,7 @@ class NewWorktreeDialogTest : BasePlatformTestCase() {
     }
 
     fun `test creating sends the visible reasoning fallback instead of an invalid saved value`() {
-        app.selectVariant("kilo/gpt-5", "stale")
+        store.setVariant("kilo/gpt-5", "stale")
         open()
         flushUntil { edt { model().selectionKeyForTest() != null } }
         edt {
@@ -426,6 +432,7 @@ class NewWorktreeDialogTest : BasePlatformTestCase() {
                 origin,
                 app,
                 workspaces,
+                store,
             )
         }
     }

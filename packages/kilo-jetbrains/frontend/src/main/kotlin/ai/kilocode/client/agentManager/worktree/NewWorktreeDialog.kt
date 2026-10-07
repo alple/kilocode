@@ -4,9 +4,11 @@ import ai.kilocode.client.KiloNotifications
 import ai.kilocode.client.actions.reloadCoreSettings
 import ai.kilocode.client.app.KiloAppService
 import ai.kilocode.client.app.KiloWorkspaceService
+import ai.kilocode.client.deluxe.KiloProjectParameterStore
 import ai.kilocode.client.plugin.KiloBundle
 import ai.kilocode.client.plugin.KiloPluginSettings
 import ai.kilocode.client.session.controller.key
+import ai.kilocode.client.session.controller.modelSelection
 import ai.kilocode.client.session.controller.resolveSessionAgent
 import ai.kilocode.client.session.controller.resolveSessionDefaultModel
 import ai.kilocode.client.session.controller.resolveSessionModel
@@ -99,6 +101,7 @@ internal class NewWorktreeDialog(
     private val origin: String? = null,
     private val app: KiloAppService = service(),
     private val workspaces: KiloWorkspaceService = service(),
+    private val store: KiloProjectParameterStore = project.getService(KiloProjectParameterStore::class.java),
 ) : DialogWrapper(parent, false), NewWorktreeHandle {
 
     private val scope = CoroutineScope(SupervisorJob() + Dispatchers.Default)
@@ -274,13 +277,14 @@ internal class NewWorktreeDialog(
         prompt.model.onFavoriteToggle = { item -> app.toggleModelFavorite(item.provider, item.id) }
         prompt.model.onSelect = { item ->
             modelKey = item.key
-            agent?.let { app.selectModel(it, item.provider, item.id) }
+            // Picks persist per project (ADR-0002), not in the user-global model.json.
+            agent?.let { store.setModel(it, item.provider, item.id) }
             syncReasoning(item)
             prompt.setAttachmentEnabled(item.attachment)
         }
         prompt.reasoning.onSelect = { item ->
             variant = item.id
-            modelKey?.let { app.selectVariant(it, item.id) }
+            modelKey?.let { store.setVariant(it, item.id) }
         }
     }
 
@@ -300,7 +304,7 @@ internal class NewWorktreeDialog(
     private fun applyModels(ws: ModelsWorkspaceDto) {
         workspace = ws
         items = modelItems(ws.providers)
-        agent = resolveSessionAgent(ws.agents, KiloPluginSettings.getAgent())
+        agent = resolveSessionAgent(ws.agents, store.getAgent())
         prompt.mode.setItems(modeItems(ws.agents?.agents), agent)
         if (items.isEmpty()) {
             prompt.setReady(true)
@@ -335,7 +339,7 @@ internal class NewWorktreeDialog(
                 ready = cfg.status == KiloAppStatusDto.READY,
                 first = ModelSelectionDto(first.provider, first.id),
             )
-            val selection = resolveSessionModel(ws.providers, id, state, cfg.config, fallback)
+            val selection = resolveSessionModel(ws.providers, id, store.model(id)?.let(::modelSelection), state, cfg.config, fallback)
             items.firstOrNull { it.key == selection?.key } ?: first
         }
         prompt.model.setItems(items, current.key)
@@ -345,7 +349,8 @@ internal class NewWorktreeDialog(
     }
 
     private fun syncReasoning(item: ModelPicker.Item) {
-        val saved = app.models.value.variant[item.key]?.takeIf { it in item.variants }
+        val saved = store.variant(item.key)?.takeIf { it in item.variants }
+            ?: app.models.value.variant[item.key]?.takeIf { it in item.variants }
         variant = saved ?: item.variants.firstOrNull()
         prompt.reasoning.setItems(
             item.variants.map { ReasoningPicker.Item(it, variantTitle(it)) },

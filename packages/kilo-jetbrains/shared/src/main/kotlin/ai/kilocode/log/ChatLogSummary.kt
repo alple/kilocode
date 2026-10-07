@@ -73,6 +73,7 @@ object ChatLogSummary {
         prompt.agent?.takeIf { it.isNotBlank() }?.let { out += "agent=$it" }
         model(prompt.providerID, prompt.modelID)?.let { out += "model=$it" }
         prompt.variant?.takeIf { it.isNotBlank() }?.let { out += "variant=$it" }
+        prompt.route?.takeIf { it.isNotBlank() }?.let { out += "route=$it" }
         prompt.editorContext?.let { ctx ->
             out += "editorContext=true"
             ctx.activeFile?.let { file -> out += editorFile("activeFile", file) }

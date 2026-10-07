@@ -4,9 +4,6 @@ import ai.kilocode.backend.cli.KiloBackendHttpClients
 import ai.kilocode.backend.testing.MockCliServer
 import ai.kilocode.backend.testing.TestLog
 import ai.kilocode.rpc.dto.ModelFavoriteUpdateDto
-import ai.kilocode.rpc.dto.ModelSelectionDto
-import ai.kilocode.rpc.dto.ModelSelectionUpdateDto
-import ai.kilocode.rpc.dto.ModelVariantUpdateDto
 import kotlinx.coroutines.runBlocking
 import java.nio.file.Files
 import kotlin.io.path.createTempDirectory
@@ -65,35 +62,6 @@ class KiloBackendModelStateManagerTest {
         assertTrue(raw.contains("\"recent\""), raw)
         assertTrue(raw.contains("\"variant\""), raw)
         assertTrue(raw.contains("claude"), raw)
-    }
-
-    @Test
-    fun `selection update writes model json`() = runBlocking {
-        val port = start()
-        dir.resolve("model.json").writeText("""{"favorite":[],"recent":[]}""")
-        val mgr = KiloBackendModelStateManager(log)
-        mgr.start(http, port)
-
-        val state = mgr.selection(ModelSelectionUpdateDto("code", "kilo", "auto"))
-        val raw = dir.resolve("model.json").readText()
-
-        assertEquals("auto", state.model["code"]?.modelID)
-        assertEquals(emptyList<ModelSelectionDto>(), state.recent)
-        assertTrue(raw.contains("\"model\""), raw)
-        assertTrue(raw.contains("\"recent\""), raw)
-    }
-
-    @Test
-    fun `variant update writes model json`() = runBlocking {
-        val port = start()
-        dir.resolve("model.json").writeText("{}")
-        val mgr = KiloBackendModelStateManager(log)
-        mgr.start(http, port)
-
-        val state = mgr.variant(ModelVariantUpdateDto("kilo/auto", "medium"))
-
-        assertEquals("medium", state.variant["kilo/auto"])
-        assertTrue(dir.resolve("model.json").readText().contains("medium"))
     }
 
     @Test

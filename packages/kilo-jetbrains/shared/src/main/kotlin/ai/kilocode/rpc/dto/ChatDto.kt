@@ -140,6 +140,8 @@ data class PromptDto(
     val modelID: String? = null,
     val agent: String? = null,
     val variant: String? = null,
+    /** OpenRouter routing tag pinned for this turn (ADR-0001); absent = provider-default routing. */
+    val route: String? = null,
     val noReply: Boolean? = null,
     val editorContext: EditorContextDto? = null,
 )

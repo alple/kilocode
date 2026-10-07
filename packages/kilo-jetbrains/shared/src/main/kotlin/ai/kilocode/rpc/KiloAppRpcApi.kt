@@ -7,9 +7,7 @@ import ai.kilocode.rpc.dto.KiloAppStateDto
 import ai.kilocode.rpc.dto.LogConfigDto
 import ai.kilocode.rpc.dto.LogFileDto
 import ai.kilocode.rpc.dto.ModelFavoriteUpdateDto
-import ai.kilocode.rpc.dto.ModelSelectionUpdateDto
 import ai.kilocode.rpc.dto.ModelStateDto
-import ai.kilocode.rpc.dto.ModelVariantUpdateDto
 import ai.kilocode.rpc.dto.ProfileDto
 import ai.kilocode.rpc.dto.RetentionStatusDto
 import ai.kilocode.rpc.dto.TelemetryCaptureDto
@@ -65,12 +63,6 @@ interface KiloAppRpcApi : RemoteApi<Unit> {
 
     /** Toggle a persisted CLI model favorite. */
     suspend fun updateModelFavorite(update: ModelFavoriteUpdateDto): ModelStateDto
-
-    /** Persist a per-agent model selection. */
-    suspend fun updateModelSelection(update: ModelSelectionUpdateDto): ModelStateDto
-
-    /** Persist a per-model reasoning variant selection. */
-    suspend fun updateModelVariant(update: ModelVariantUpdateDto): ModelStateDto
 
     /** Patch global CLI config values. */
     suspend fun updateConfig(patch: ConfigPatchDto): KiloAppStateDto

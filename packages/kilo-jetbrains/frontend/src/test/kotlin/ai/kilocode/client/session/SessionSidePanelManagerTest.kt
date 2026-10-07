@@ -4,6 +4,7 @@ import ai.kilocode.client.app.KiloAppService
 import ai.kilocode.client.app.KiloSessionService
 import ai.kilocode.client.app.KiloWorkspaceService
 import ai.kilocode.client.app.Workspace
+import ai.kilocode.client.deluxe.KiloProjectParameterStore
 import ai.kilocode.client.plugin.KiloBundle
 import ai.kilocode.client.session.history.HistoryController
 import ai.kilocode.client.session.history.HistoryDataKeys
@@ -745,6 +746,7 @@ class SessionSidePanelManagerTest : BasePlatformTestCase() {
         sessions = sessions,
         workspace = workspace,
         app = app,
+        store = KiloProjectParameterStore(),
         cs = coroutines.scope,
         timers = timers,
     )

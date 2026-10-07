@@ -6,6 +6,7 @@ import ai.kilocode.client.app.KiloAppService
 import ai.kilocode.client.app.KiloSessionService
 import ai.kilocode.client.app.KiloWorkspaceService
 import ai.kilocode.client.app.Workspace
+import ai.kilocode.client.deluxe.KiloProjectParameterStore
 import ai.kilocode.client.diff.KiloDiffComparison
 import ai.kilocode.client.diff.KiloDiffEditorKind
 import ai.kilocode.client.diff.openKiloDiff
@@ -149,6 +150,7 @@ class SessionUi(
     private val manager: SessionManager? = null,
     private val workspaces: KiloWorkspaceService = service(),
     private val onboarding: OnboardingController = service<KiloOnboardingService>(),
+    private val store: KiloProjectParameterStore = project.getService(KiloProjectParameterStore::class.java),
     private val timers: UiTimerSource = UiTimers,
 ) : JPanel(BorderLayout()), Disposable, SessionEditorStyleTarget, UiDataProvider, SessionActions {
 
@@ -179,6 +181,7 @@ class SessionUi(
         sessions = sessions,
         workspace = workspace,
         app = app,
+        store = store,
         cs = cs,
         comp = this,
         flushMs = flushMs,

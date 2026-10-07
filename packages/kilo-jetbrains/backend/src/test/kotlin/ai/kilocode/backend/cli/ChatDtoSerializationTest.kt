@@ -17,6 +17,7 @@ import ai.kilocode.rpc.dto.SessionStatusDto
 import kotlinx.serialization.json.Json
 import kotlin.test.Test
 import kotlin.test.assertEquals
+import kotlin.test.assertFalse
 import kotlin.test.assertNull
 import kotlin.test.assertTrue
 
@@ -285,6 +286,31 @@ class ChatDtoSerializationTest {
         assertEquals("image/png", decoded.parts[1].mime)
         assertEquals("file:///tmp/a.png", decoded.parts[1].url)
         assertEquals("a.png", decoded.parts[1].filename)
+    }
+
+    @Test
+    fun `PromptDto route is preserved in round-trip`() {
+        val prompt = PromptDto(
+            parts = listOf(PromptPartDto("text", "hello")),
+            providerID = "kilo",
+            modelID = "gpt-5",
+            agent = "code",
+            variant = "medium",
+            route = "deepseek/r1",
+        )
+        val encoded = json.encodeToString(PromptDto.serializer(), prompt)
+
+        assertTrue(encoded.contains(""""route":"deepseek/r1""""))
+        val decoded = json.decodeFromString(PromptDto.serializer(), encoded)
+        assertEquals("deepseek/r1", decoded.route)
+    }
+
+    @Test
+    fun `PromptDto route defaults to null`() {
+        val prompt = PromptDto(parts = listOf(PromptPartDto("text", "hello")))
+        val encoded = json.encodeToString(PromptDto.serializer(), prompt)
+
+        assertFalse(encoded.contains("route"), encoded)
     }
 
     // ------ helpers ------

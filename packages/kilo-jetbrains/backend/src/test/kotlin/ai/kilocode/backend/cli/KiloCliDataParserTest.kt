@@ -2388,6 +2388,29 @@ class KiloCliDataParserTest {
         }
 
         @Test
+        fun `buildPromptJson - route follows variant on the wire`() {
+            val prompt = PromptDto(
+                parts = listOf(PromptPartDto("text", "Hi")),
+                variant = "medium",
+                route = "deepseek/r1",
+            )
+            val result = KiloCliDataParser.buildPromptJson(prompt)
+
+            assertEquals(
+                """{"parts":[{"type":"text","text":"Hi"}],"variant":"medium","route":"deepseek/r1"}""",
+                result,
+            )
+        }
+
+        @Test
+        fun `buildPromptJson - no route by default`() {
+            val prompt = PromptDto(parts = listOf(PromptPartDto("text", "Hi")))
+            val result = KiloCliDataParser.buildPromptJson(prompt)
+
+            assertFalse(result.contains("route"), result)
+        }
+
+        @Test
         fun `buildPromptJson - escapes special characters`() {
             val prompt = PromptDto(parts = listOf(PromptPartDto("text", "line1\nline2\t\"quoted\"")))
             val result = KiloCliDataParser.buildPromptJson(prompt)

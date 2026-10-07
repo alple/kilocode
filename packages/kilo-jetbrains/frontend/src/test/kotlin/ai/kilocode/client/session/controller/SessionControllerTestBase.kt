@@ -3,6 +3,7 @@ package ai.kilocode.client.session.controller
 import ai.kilocode.client.util.edtWait
 import ai.kilocode.client.app.KiloAppService
 import ai.kilocode.client.app.KiloSessionService
+import ai.kilocode.client.deluxe.KiloProjectParameterStore
 import ai.kilocode.client.session.model.SessionModel
 import ai.kilocode.client.session.model.SessionModelEvent
 import ai.kilocode.client.session.model.SessionState
@@ -13,7 +14,6 @@ import ai.kilocode.client.testing.TestCoroutines
 import ai.kilocode.client.testing.TestUiTimers
 import ai.kilocode.client.app.KiloWorkspaceService
 import ai.kilocode.client.app.Workspace
-import ai.kilocode.client.plugin.KiloPluginSettings
 import ai.kilocode.client.session.SessionRef
 import ai.kilocode.log.KiloLog
 import ai.kilocode.rpc.dto.AgentDto
@@ -104,6 +104,13 @@ abstract class SessionControllerTestBase : BasePlatformTestCase() {
     protected lateinit var workspace: Workspace
     protected lateinit var timers: TestUiTimers
 
+    /**
+     * Fresh per-project parameter store per test. Production resolves it from the project
+     * container, where it outlives controllers; a fresh instance gives every test a clean pick set
+     * without touching workspace.xml.
+     */
+    protected lateinit var store: KiloProjectParameterStore
+
     private lateinit var coroutines: TestCoroutines
     protected lateinit var scope: CoroutineScope
     protected lateinit var parent: Disposable
@@ -122,9 +129,7 @@ abstract class SessionControllerTestBase : BasePlatformTestCase() {
         timers = TestUiTimers()
         notifications.clear()
         infoNotifications.clear()
-        // Application-level and shared across tests in a fixture, and it now seeds a new session's
-        // mode, so a leftover pick from another test would decide this one's starting agent.
-        KiloPluginSettings.unsetAgent()
+        store = KiloProjectParameterStore()
 
         coroutines = TestCoroutines()
         scope = coroutines.scope
@@ -140,7 +145,6 @@ abstract class SessionControllerTestBase : BasePlatformTestCase() {
         try {
             Disposer.dispose(parent)
             coroutines.close()
-            KiloPluginSettings.unsetAgent()
         } finally {
             super.tearDown()
         }
@@ -188,6 +192,7 @@ abstract class SessionControllerTestBase : BasePlatformTestCase() {
             sessions = sessions,
             workspace = workspace,
             app = app,
+            store = store,
             cs = scope,
             comp = root,
             flushMs = flushMs,

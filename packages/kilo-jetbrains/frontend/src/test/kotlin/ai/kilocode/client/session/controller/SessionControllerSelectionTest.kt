@@ -47,8 +47,10 @@ class SessionControllerSelectionTest : SessionControllerTestBase() {
         assertEquals("plan", agent)
         assertEquals("kilo/opus", model)
         assertEquals("high", variant)
-        assertTrue(appRpc.selections.isEmpty())
-        assertTrue(appRpc.variants.isEmpty())
+        // Seeding is session-local: nothing reaches the user-global model.json (the dialog's own
+        // pick writes the project store).
+        assertEquals(null, appRpc.models.model["plan"])
+        assertEquals(null, appRpc.models.variant["kilo/opus"])
 
         edt { m.prompt("go") }
         flush()
