@@ -9,13 +9,14 @@ Builds the JetBrains plugin for a version without creating or validating a git t
 By default this runs a clean build, signs the ZIP, and verifies it.
 
 Version:
-  x.y.z or x.y.z-rc.n, with an optional leading v. An optional -lux<N> pre-release suffix
-  (e.g. 7.0.1-lux1) marks a local "lux" build: it sorts below its base release, so it can
-  never shadow a published version, and it builds under a separate plugin id and name
-  (ai.kilocode.jetbrains.lux / Kilo Code (lux)) so it installs side-by-side with the
-  published plugin. An optional +<sha> build-metadata suffix marks a local, non-release
-  build off a dev commit (e.g. 7.0.1-rc.1+8d0c4147); it never matches a jetbrains/v<version>
-  release tag.
+  x.y.z or x.y.z-rc.n, with an optional leading v. A -lux suffix marks a local "lux" build:
+  it sorts below its base release, so it can never shadow a published version, and it builds
+  under a separate plugin id and name (ai.kilocode.jetbrains.lux / Kilo Code (lux)) so it
+  installs side-by-side with the published plugin. The lux counter lives in gradle.properties
+  (kilo.lux.version) and increments per build — pass -lux to continue it (e.g. 7.0.1-lux), or
+  an explicit -lux<N> to pin the number (e.g. 7.0.1-lux4; must match the counter). An optional
+  +<sha> build-metadata suffix marks a local, non-release build off a dev commit
+  (e.g. 7.0.1-rc.1+8d0c4147); it never matches a jetbrains/v<version> release tag.
 
 Options:
   --skip-signing       Build an unsigned ZIP without requiring JetBrains signing secrets.
@@ -29,7 +30,8 @@ Examples:
   $0 7.0.1-rc.1 --skip-signing --skip-verification
   $0 7.0.1 --skip-clean --skip-signing --skip-verification
   $0 7.0.1-rc.1+8d0c4147 --skip-signing --skip-verification
-  $0 7.0.1-lux1 --skip-signing --skip-verification
+  $0 7.0.1-lux --skip-signing --skip-verification
+  $0 7.0.1-lux4 --skip-signing --skip-verification
 EOF
 }
 
@@ -76,8 +78,8 @@ if [[ -z "$raw" ]]; then
 fi
 
 version="${raw#v}"
-if [[ ! "$version" =~ ^[0-9]+\.[0-9]+\.[0-9]+(-rc\.[0-9]+)?(-lux[0-9]+)?(\+[0-9a-f]+)?$ ]]; then
-  echo "Unsupported version '$raw'. Expected x.y.z or x.y.z-rc.n, optionally with a -lux<N> or +<sha> suffix, for example 7.0.1, 7.0.1-rc.1, 7.0.1-lux1, or 7.0.1-rc.1+8d0c4147." >&2
+if [[ ! "$version" =~ ^[0-9]+\.[0-9]+\.[0-9]+(-rc\.[0-9]+)?(-lux[0-9]*)?(\+[0-9a-f]+)?$ ]]; then
+  echo "Unsupported version '$raw'. Expected x.y.z or x.y.z-rc.n, optionally with a -lux[N] or +<sha> suffix, for example 7.0.1, 7.0.1-rc.1, 7.0.1-lux, or 7.0.1-rc.1+8d0c4147." >&2
   exit 1
 fi
 
@@ -88,13 +90,30 @@ chain="${secrets}/chain.crt"
 key="${secrets}/private.pem"
 encrypted_key="${secrets}/private_encrypted.pem"
 pass="${secrets}/JETBRAINS_PRIVATE_KEY_PASSWORD"
+props="$plugin/gradle.properties"
+
+# The lux counter lives in gradle.properties so builds never need a version hunt:
+# -lux continues it; an explicit -lux<N> must match it exactly.
+if [[ "$version" =~ -lux[0-9]* ]]; then
+  counter="$(sed -nE 's/^kilo\.lux\.version=([0-9]+)$/\1/p' "$props" | tail -1)"
+  if [[ -z "$counter" ]]; then
+    echo "Missing kilo.lux.version in gradle.properties; add it (e.g. kilo.lux.version=1) before building a lux version." >&2
+    exit 1
+  fi
+  if [[ "$version" == *-lux ]]; then
+    version="$version$counter"
+  elif [[ "$version" != *-lux"$counter" ]]; then
+    echo "Version '$version' does not match the lux counter $counter in gradle.properties (kilo.lux.version). Bump the property or drop the explicit number." >&2
+    exit 1
+  fi
+fi
 
 if [[ ! -d "$plugin" ]]; then
   echo "Expected JetBrains plugin package at $plugin" >&2
   exit 1
 fi
 
-if grep -Eq '^[[:space:]]*kilo\.cli\.pinned[[:space:]]*=[[:space:]]*false[[:space:]]*$' "$plugin/gradle.properties"; then
+if grep -Eq '^[[:space:]]*kilo\.cli\.pinned[[:space:]]*=[[:space:]]*false[[:space:]]*$' "$plugin/gradle.properties" && [[ "$version" != *-lux* ]]; then
   echo "kilo.cli.pinned=false is a dev-only mode and cannot be released. Set kilo.cli.pinned=true before building a version." >&2
   exit 1
 fi
@@ -158,4 +177,15 @@ if [[ "$sign" == "1" ]]; then
 else
   printf '\nUnsigned JetBrains plugin ZIP:\n'
   zipfile "*-${version}.zip"
+fi
+
+# Consume the counter on success: a -lux build becomes lux<N+1> next time. An explicit
+# -lux<N> advances to N+1 as well, so re-running with -lux never rebuilds the same number.
+if [[ "$version" =~ -lux([0-9]+)$ ]]; then
+  next=$((BASH_REMATCH[1] + 1))
+  if [[ "$(sed -nE 's/^kilo\.lux\.version=([0-9]+)$/\1/p' "$props" | tail -1)" == "$next" ]]; then
+    exit 0
+  fi
+  sed -i.bak -E "s/^kilo\.lux\.version=[0-9]+$/kilo.lux.version=$next/" "$props" && rm -f "$props.bak"
+  printf 'Lux counter advanced to %s in gradle.properties.\n' "$next"
 fi
