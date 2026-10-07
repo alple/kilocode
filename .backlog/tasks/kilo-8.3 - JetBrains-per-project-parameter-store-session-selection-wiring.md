@@ -1,9 +1,11 @@
 ---
 id: KILO-8.3
 title: 'JetBrains: per-project parameter store + session selection wiring'
-status: To Do
-assignee: []
+status: In Progress
+assignee:
+  - dev1
 created_date: '2026-10-06 13:05'
+updated_date: '2026-10-07 07:37'
 labels: []
 dependencies: []
 parent_task_id: KILO-8
