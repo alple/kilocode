@@ -1,9 +1,11 @@
 ---
 id: KILO-8.5
 title: 'JetBrains: enable model routing by default'
-status: To Do
-assignee: []
+status: In Progress
+assignee:
+  - dev1
 created_date: '2026-10-07 15:32'
+updated_date: '2026-10-07 15:33'
 labels: []
 dependencies: []
 parent_task_id: KILO-8
