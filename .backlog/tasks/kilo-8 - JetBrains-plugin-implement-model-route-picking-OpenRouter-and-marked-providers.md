@@ -3,9 +3,10 @@ id: KILO-8
 title: >-
   JetBrains plugin: implement model + route picking (OpenRouter and marked
   providers)
-status: To Do
+status: Done
 assignee: []
 created_date: '2026-10-06 12:33'
+updated_date: '2026-10-07 12:50'
 labels: []
 dependencies: []
 priority: high
