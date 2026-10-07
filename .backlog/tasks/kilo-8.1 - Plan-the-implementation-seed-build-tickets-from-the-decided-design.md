@@ -1,11 +1,11 @@
 ---
 id: KILO-8.1
 title: 'Plan the implementation: seed build tickets from the decided design'
-status: Testing
+status: Done
 assignee:
   - dev1
 created_date: '2026-10-06 12:33'
-updated_date: '2026-10-06 13:48'
+updated_date: '2026-10-07 12:50'
 labels: []
 dependencies: []
 parent_task_id: KILO-8
