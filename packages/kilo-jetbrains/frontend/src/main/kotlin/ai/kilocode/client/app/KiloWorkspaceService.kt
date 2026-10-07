@@ -12,6 +12,7 @@ import ai.kilocode.rpc.dto.KiloWorkspaceStateDto
 import ai.kilocode.rpc.dto.KiloWorkspaceStatusDto
 import ai.kilocode.rpc.dto.LoadErrorDto
 import ai.kilocode.rpc.dto.ModelsWorkspaceDto
+import ai.kilocode.rpc.dto.RouteEndpointDto
 import ai.kilocode.rpc.dto.SetupScriptTargetDto
 import ai.kilocode.rpc.dto.WorkspaceFileDto
 import ai.kilocode.client.util.edt
@@ -181,6 +182,16 @@ class KiloWorkspaceService internal constructor(
             LOG.warn("models settings lookup failed for directory=$directory", e)
             ModelsWorkspaceDto(errors = listOf(LoadErrorDto(resource = "models", detail = e.message)))
         }
+    }
+
+    /**
+     * Routing endpoints for one model on a route-capable provider. Throws on lookup failure so the
+     * caller can surface an unavailable notice; an unknown model yields an empty list.
+     */
+    @RequiresBackgroundThread
+    suspend fun routes(directory: String, author: String, slug: String): List<RouteEndpointDto> {
+        LOG.debug { "workspace route list directory=$directory author=$author slug=$slug" }
+        return call { routes(directory, author, slug) }
     }
 
     suspend fun files(directory: String, path: String): List<WorkspaceFileDto> {

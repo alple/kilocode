@@ -14,6 +14,7 @@ import ai.kilocode.client.session.ui.prompt.PROMPT_ATTACHMENT_PASTE_HANDLER_KEY
 import ai.kilocode.client.session.ui.prompt.PromptAttachmentPasteHandler
 import ai.kilocode.client.session.ui.prompt.PromptAttachmentPasteProvider
 import ai.kilocode.client.session.ui.prompt.PromptDataKeys
+import ai.kilocode.client.deluxe.KiloParameterPicker
 import ai.kilocode.client.session.ui.prompt.PromptPanel
 import ai.kilocode.client.session.ui.prompt.PromptTextPasteProvider
 import ai.kilocode.client.session.ui.prompt.SlashAction
@@ -1751,6 +1752,22 @@ class PromptPanelTest : BasePlatformTestCase() {
         assertTrue(SwingUtilities.isDescendingFrom(panel.model, shell))
         assertTrue(SwingUtilities.isDescendingFrom(panel.reasoning, shell))
         assertSame(shell, panel.mode.parent.parent)
+    }
+
+    fun `test the parameter picker takes the model and reasoning slots when set`() {
+        val parameters = KiloParameterPicker()
+        val panel = PromptPanel(
+            project = project,
+            onSend = { _, _ -> },
+            onAbort = {},
+            onEnhance = { _, _ -> },
+            parameters = parameters,
+        )
+        val shell = panel.shellForTest()
+
+        assertTrue(SwingUtilities.isDescendingFrom(parameters, shell))
+        assertFalse("The model picker leaves the bar", SwingUtilities.isDescendingFrom(panel.model, shell))
+        assertFalse("The reasoning picker leaves the bar", SwingUtilities.isDescendingFrom(panel.reasoning, shell))
     }
 
     private fun autoApproveButton(panel: PromptPanel): JButton {

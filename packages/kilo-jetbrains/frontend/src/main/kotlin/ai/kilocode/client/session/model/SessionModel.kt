@@ -67,6 +67,14 @@ class SessionModel {
     var modelOverride: Boolean = false
     var variants: List<String> = emptyList()
     var variant: String? = null
+
+    /**
+     * Delivered parameter lock (KILO-8.4): model, route and reasoning effort freeze as one at the
+     * session's first message. The controller sets it on dispatch (and re-locks after an explicit
+     * unlock at the next message); [loadHistory] locks sessions that already carry messages. An
+     * unfrozen session that already ran turns stays editable until the user sends again.
+     */
+    var parametersFrozen: Boolean = false
     var showSession: Boolean = false
 
     var state: SessionState = SessionState.Idle
@@ -394,6 +402,7 @@ class SessionModel {
         dismissedBackgroundAgents = emptySet()
         backgroundAgents = emptyList()
         compactionCount = 0
+        parametersFrozen = history.isNotEmpty()
         for (msg in history) {
             val item = Message(msg.info)
             for (part in msg.parts) {
@@ -432,6 +441,7 @@ class SessionModel {
         dismissedBackgroundAgents = emptySet()
         backgroundAgents = emptyList()
         compactionCount = 0
+        parametersFrozen = false
         fire(SessionModelEvent.Cleared)
         updateHeader()
     }

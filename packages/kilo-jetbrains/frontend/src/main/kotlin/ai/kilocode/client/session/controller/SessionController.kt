@@ -344,6 +344,12 @@ class SessionController(
         // never reaches a turn would otherwise leave a stale Stop suppressing the next explanation.
         stopRequested = false
         cancelReason = null
+        // The first message locks the model/route/effort trio (ADR-0001). Edits after this need an
+        // explicit unlock and then apply from the next message onward; every send re-locks.
+        if (!model.parametersFrozen) {
+            model.parametersFrozen = true
+            fire(SessionControllerEvent.WorkspaceReady)
+        }
         val props = data.props + if (data.kind == "command") slashProps() else emptyMap()
         capture("Conversation Send Clicked", sessionProps(sid ?: ref?.key) + mapOf(
             "source" to data.source,
@@ -883,6 +889,10 @@ class SessionController(
 
     fun selectModel(provider: String, id: String) {
         assertEdt()
+        if (model.parametersFrozen) {
+            LOG.debug { "${ChatLogSummary.sid(sid ?: ref?.key ?: "pending")} kind=config model-refusal locked=true" }
+            return
+        }
         LOG.debug { "${ChatLogSummary.sid(sid ?: ref?.key ?: "pending")} kind=config model=$provider/$id" }
         val agent = model.agent ?: return
         val key = "$provider/$id"
@@ -905,6 +915,10 @@ class SessionController(
     fun clearModelOverride() {
         assertEdt()
         val agent = model.agent ?: return
+        if (model.parametersFrozen) {
+            LOG.debug { "${ChatLogSummary.sid(sid ?: ref?.key ?: "pending")} kind=config model-reset-refusal locked=true" }
+            return
+        }
         LOG.debug { "${ChatLogSummary.sid(sid ?: ref?.key ?: "pending")} kind=config model-reset agent=$agent" }
         prefVariantKey = null
         prefVariant = null
@@ -925,30 +939,74 @@ class SessionController(
         assertEdt()
         val key = model.model ?: return
         if (value !in model.variants) return
+        if (model.parametersFrozen) {
+            LOG.debug { "${ChatLogSummary.sid(sid ?: ref?.key ?: "pending")} kind=config variant-refusal locked=true" }
+            return
+        }
         LOG.debug { "${ChatLogSummary.sid(sid ?: ref?.key ?: "pending")} kind=config variant=$key/$value" }
         prefVariantKey = key
         prefVariant = value
         // The pick persists per project (ADR-0002): the next new session inherits it.
         store.setVariant(key, value)
         model.variant = value
+        fire(SessionControllerEvent.WorkspaceReady)
         capture("Reasoning Variant Selected", sessionProps() + mapOf("model" to key, "variant" to value))
+    }
+
+    /** Auto effort: drop the pin and the store's remembered variant for the current model. */
+    fun clearVariant() {
+        assertEdt()
+        val key = model.model ?: return
+        if (model.parametersFrozen) {
+            LOG.debug { "${ChatLogSummary.sid(sid ?: ref?.key ?: "pending")} kind=config variant-clear-refusal locked=true" }
+            return
+        }
+        LOG.debug { "${ChatLogSummary.sid(sid ?: ref?.key ?: "pending")} kind=config variant-clear=$key" }
+        prefVariantKey = null
+        prefVariant = null
+        store.clearVariant(key)
+        model.variant = null
+        fire(SessionControllerEvent.WorkspaceReady)
+        capture("Reasoning Variant Cleared", sessionProps() + mapOf("model" to key))
     }
 
     /**
      * Pin the OpenRouter route used from the next turn onward, or clear the pin with null (Auto).
      *
      * The pin is keyed to the currently selected model like [selectVariant] and persists per
-     * project in [store]; the picker UI and route list land with the parameter component ticket.
+     * project in [store]. [prefRoute] rides the next [promptDto]; the route list is fetched on
+     * demand by the parameter picker (KILO-8.4).
      */
     fun selectRoute(value: String?) {
         assertEdt()
         val key = model.model ?: return
+        if (model.parametersFrozen) {
+            LOG.debug { "${ChatLogSummary.sid(sid ?: ref?.key ?: "pending")} kind=config route-refusal locked=true" }
+            return
+        }
         val route = value?.trim()?.takeIf { it.isNotEmpty() }
         LOG.debug { "${ChatLogSummary.sid(sid ?: ref?.key ?: "pending")} kind=config route=$key/$route" }
         prefRouteKey = key
         prefRoute = route
         if (route == null) store.clearRoute(key) else store.setRoute(key, route)
+        fire(SessionControllerEvent.WorkspaceReady)
         capture("Route Selected", sessionProps() + mapOf("model" to key, "route" to (route ?: "auto")))
+    }
+
+    /**
+     * Unlock the frozen model/route/effort trio so it can be edited again (explicit user action).
+     * The pick stays the session's working selection and every change now applies from the next
+     * message onward; the next send re-locks the trio.
+     */
+    fun unfreezeParameters() {
+        assertEdt()
+        LOG.debug { "${ChatLogSummary.sid(sid ?: ref?.key ?: "pending")} kind=config unfreeze" }
+        if (!model.parametersFrozen) return
+        updateModel {
+            model.parametersFrozen = false
+        }
+        fire(SessionControllerEvent.WorkspaceReady)
+        capture("Parameters Unlocked", sessionProps())
     }
 
     /**
@@ -2467,7 +2525,7 @@ class SessionController(
      * The route pin for [key] ("provider/model"), if any: the session-local pin wins when it was
      * picked for this model, otherwise the project store's remembered route.
      */
-    private fun routeFor(key: String?): String? {
+    internal fun routeFor(key: String?): String? {
         if (key == null) return null
         return prefRoute?.takeIf { prefRouteKey == key } ?: store.route(key)?.takeIf { it.isNotBlank() }
     }

@@ -81,6 +81,14 @@
 
         <applicationConfigurable
                 parentId="ai.kilocode.jetbrains.settings"
+                id="ai.kilocode.jetbrains.settings.routing"
+                groupWeight="2"
+                instance="ai.kilocode.client.deluxe.KiloRoutingConfigurable"
+                bundle="messages.KiloBundle"
+                key="settings.routing.displayName"/>
+
+        <applicationConfigurable
+                parentId="ai.kilocode.jetbrains.settings"
                 id="ai.kilocode.jetbrains.settings.agentBehavior"
                 groupWeight="1"
                 instance="ai.kilocode.client.settings.agents.AgentBehaviorConfigurable"

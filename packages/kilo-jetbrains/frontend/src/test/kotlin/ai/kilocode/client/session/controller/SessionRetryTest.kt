@@ -152,7 +152,9 @@ class SessionRetryTest : SessionControllerTestBase() {
         flush()
 
         // The usual reason a turn fails is the model it ran with, so switching model and hitting Retry
-        // has to pick the new one up rather than replaying the one that just failed.
+        // has to pick the new one up rather than replaying the one that just failed. Switching first
+        // goes through the unlock step the frozen parameter trio requires (ADR-0001).
+        edt { m.unfreezeParameters() }
         edt { m.selectModel("anthropic", "claude-opus-5") }
         flush()
         edt { m.retry() }
@@ -169,6 +171,7 @@ class SessionRetryTest : SessionControllerTestBase() {
         val m = controller("ses_test")
         flush()
 
+        edt { m.unfreezeParameters() }
         edt { m.selectVariant("high") }
         flush()
         edt { m.retry() }
@@ -201,6 +204,7 @@ class SessionRetryTest : SessionControllerTestBase() {
         val m = controller("ses_test")
         flush()
 
+        edt { m.unfreezeParameters() }
         edt { m.selectModel("anthropic", "claude-opus-5") }
         flush()
         edt { m.retry() }
@@ -250,6 +254,7 @@ class SessionRetryTest : SessionControllerTestBase() {
         val m = controller("ses_test")
         flush()
 
+        edt { m.unfreezeParameters() }
         edt { m.selectModel("kilo", "kilo-auto/free") }
         flush()
         edt { m.retry() }
@@ -361,6 +366,7 @@ class SessionRetryTest : SessionControllerTestBase() {
         )
 
         edt { assertTrue(m.canRetry()) }
+        edt { m.unfreezeParameters() }
         edt { m.selectModel("anthropic", "claude-opus-5") }
         flush()
         edt { m.retry() }
@@ -382,7 +388,9 @@ class SessionRetryTest : SessionControllerTestBase() {
         flush()
         emit(ChatEventDto.TurnClose("ses_test", "error"))
 
-        // Switch off the model that could not authenticate, then raise its effort.
+        // Switch off the model that could not authenticate, then raise its effort. Both go through
+        // the unlock step the frozen parameter trio requires after the session's first message.
+        edt { m.unfreezeParameters() }
         edt { m.selectModel("kilo", "gpt-5") }
         flush()
         edt { m.selectVariant("high") }

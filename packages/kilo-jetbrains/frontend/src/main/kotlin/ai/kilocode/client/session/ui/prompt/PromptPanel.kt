@@ -20,6 +20,7 @@ import ai.kilocode.client.session.ui.mode.ModePicker
 import ai.kilocode.client.session.ui.model.ModelPicker
 import ai.kilocode.client.session.ui.selection.SessionSelection
 import ai.kilocode.client.ui.HoverIcon
+import ai.kilocode.client.ui.PickerButton
 import ai.kilocode.client.ui.editor.EditorFolds
 import ai.kilocode.client.ui.UiStyle
 import ai.kilocode.client.ui.iconButton
@@ -129,6 +130,12 @@ class PromptPanel(
     private val approve: Boolean = true,
     private val showEnhance: Boolean = true,
     private val hostedInEditorTab: Boolean = false,
+    /**
+     * Deluxe session-header parameter picker (KILO-8.4). When set it takes the model + reasoning
+     * slots in the bar; the legacy pickers stay bound (hidden) so the Ctrl+1/2/3/0 shortcuts keep
+     * cycling through the same controller path. Other embeds (worktree dialog) leave it unset.
+     */
+    private val parameters: PickerButton? = null,
 ) : BorderLayoutPanel(), SessionEditorStyleTarget, SendPromptContext, PromptSelectors, UiDataProvider {
 
     companion object {
@@ -314,6 +321,10 @@ class PromptPanel(
         mode.onPickClose = ::focusLater
         model.onPickClose = ::focusLater
         reasoning.onPickClose = ::focusLater
+        parameters?.let { picker ->
+            picker.idleFill = null
+            picker.onPickClose = ::focusLater
+        }
         mode.action = CycleModeAction.ID
         model.action = CycleModelAction.ID
         reasoning.action = CycleReasoningAction.ID
@@ -349,10 +360,16 @@ class PromptPanel(
         }
         bar.add(mode)
         bar.add(Box.createHorizontalStrut(JBUI.scale(SessionUiStyle.View.Prompt.CONTROL_GAP)))
-        bar.add(model)
-        bar.add(Box.createHorizontalStrut(JBUI.scale(SessionUiStyle.View.Prompt.CONTROL_GAP)))
-        bar.add(reasoning)
-        bar.add(Box.createHorizontalStrut(JBUI.scale(SessionUiStyle.View.Prompt.CONTROL_GAP)))
+        val picker = parameters
+        if (picker != null) {
+            bar.add(picker)
+            bar.add(Box.createHorizontalStrut(JBUI.scale(SessionUiStyle.View.Prompt.CONTROL_GAP)))
+        } else {
+            bar.add(model)
+            bar.add(Box.createHorizontalStrut(JBUI.scale(SessionUiStyle.View.Prompt.CONTROL_GAP)))
+            bar.add(reasoning)
+            bar.add(Box.createHorizontalStrut(JBUI.scale(SessionUiStyle.View.Prompt.CONTROL_GAP)))
+        }
         bar.add(reset)
         bar.add(Box.createHorizontalGlue())
         if (approve) {

@@ -7,6 +7,7 @@ import ai.kilocode.rpc.dto.DiffFileDto
 import ai.kilocode.rpc.dto.FileSearchResultDto
 import ai.kilocode.rpc.dto.KiloWorkspaceStateDto
 import ai.kilocode.rpc.dto.ModelsWorkspaceDto
+import ai.kilocode.rpc.dto.RouteEndpointDto
 import ai.kilocode.rpc.dto.SetupScriptTargetDto
 import ai.kilocode.rpc.dto.WorkspaceFileDto
 import com.intellij.platform.project.ProjectId
@@ -51,6 +52,12 @@ interface KiloWorkspaceRpcApi : RemoteApi<Unit> {
 
     /** Fetch only the providers and agents needed by Models settings. */
     suspend fun models(directory: String): ModelsWorkspaceDto
+
+    /**
+     * Routing endpoints for a model on a route-capable provider, keyed by the OpenRouter
+     * `author`/`slug` pair. Empty when the CLI has no endpoint data for the model.
+     */
+    suspend fun routes(directory: String, author: String, slug: String): List<RouteEndpointDto>
 
     /** Read the effective configuration for [directory]. */
     suspend fun config(directory: String): ConfigDto

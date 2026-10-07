@@ -24,6 +24,7 @@ import ai.kilocode.rpc.dto.FileSearchResultDto
 import ai.kilocode.rpc.dto.KiloWorkspaceStateDto
 import ai.kilocode.rpc.dto.KiloWorkspaceStatusDto
 import ai.kilocode.rpc.dto.ModelsWorkspaceDto
+import ai.kilocode.rpc.dto.RouteEndpointDto
 import ai.kilocode.rpc.dto.SetupScriptKind
 import ai.kilocode.rpc.dto.SetupScriptTargetDto
 import ai.kilocode.rpc.dto.WorkspaceFileDto
@@ -194,6 +195,29 @@ class KiloWorkspaceRpcApiImpl internal constructor(
             agents = agents?.let(KiloWorkspaceDtoMapper::agents),
             errors = errors.map(KiloWorkspaceDtoMapper::error),
         )
+    }
+
+    /**
+     * Routing endpoints for one model, fetched from the CLI's route-list endpoint. A 404 means the
+     * model is unknown to the route catalog (sparse lists are normal) and yields an empty list
+     * rather than an error.
+     */
+    override suspend fun routes(directory: String, author: String, slug: String): List<RouteEndpointDto> {
+        app.requireReady()
+        val http = app.http ?: throw IllegalStateException("Kilo HTTP client is unavailable")
+        val raw = withContext(Dispatchers.IO) {
+            val request = Request.Builder()
+                .url("http://127.0.0.1:${app.port}/kilo/routes/${encode(author)}/${encode(slug)}?directory=${encode(directory)}")
+                .get()
+                .build()
+            http.newCall(request).execute().use { response ->
+                if (response.code == 404) return@use null
+                val body = response.body?.string().orEmpty()
+                if (!response.isSuccessful) throw RuntimeException("HTTP ${response.code}: $body")
+                body
+            }
+        } ?: return emptyList()
+        return KiloCliDataParser.parseRoutes(raw)
     }
 
     override suspend fun config(directory: String): ConfigDto {

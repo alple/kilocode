@@ -263,6 +263,8 @@ class ParameterStoreSelectionTest : SessionControllerTestBase() {
         val m = controller("ses_test")
         flush()
 
+        // Pinning goes through the unlock step the frozen parameter trio requires (ADR-0001).
+        edt { m.unfreezeParameters() }
         edt { m.selectRoute("deepseek/r1") }
         flush()
         edt { m.retry() }

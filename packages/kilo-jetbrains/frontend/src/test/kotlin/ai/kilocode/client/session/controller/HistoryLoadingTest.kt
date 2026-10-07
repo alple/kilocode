@@ -108,6 +108,7 @@ class HistoryLoadingTest : SessionControllerTestBase() {
             WorkspaceChanged
             ViewChanged progress
             ViewChanged session
+            WorkspaceReady
         """, events)
     }
 

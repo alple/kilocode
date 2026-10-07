@@ -68,6 +68,10 @@ class KiloProjectParameterStore : PersistentStateComponent<KiloProjectParameterS
         state = state.copy(variant = state.variant + (key to value))
     }
 
+    fun clearVariant(key: String) {
+        state = state.copy(variant = state.variant - key)
+    }
+
     fun route(key: String): String? = state.route[key]
 
     fun setRoute(key: String, value: String) {

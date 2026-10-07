@@ -1,6 +1,7 @@
 package ai.kilocode.client.settings
 
 import ai.kilocode.client.plugin.KiloBundle
+import ai.kilocode.client.deluxe.KiloRoutingConfigurable
 import ai.kilocode.client.settings.agents.AgentBehaviorConfigurable
 import ai.kilocode.client.settings.autoapprove.AutoApproveConfigurable
 import ai.kilocode.client.settings.checkpoints.CheckpointsConfigurable
@@ -101,6 +102,14 @@ class KiloSettingsConfigurable : SearchableConfigurable {
         }
         context.border = JBUI.Borders.emptyBottom(UiStyle.Gap.sm())
         panel.next(context)
+
+        val routing = ActionLink(KiloBundle.message("settings.routing.displayName")) { e ->
+            val src = e.source as? JComponent ?: return@ActionLink
+            val settings = Settings.KEY.getData(DataManager.getInstance().getDataContext(src)) ?: return@ActionLink
+            open(settings, KiloRoutingConfigurable.ID)
+        }
+        routing.border = JBUI.Borders.emptyBottom(UiStyle.Gap.sm())
+        panel.next(routing)
 
         val checkpoints = ActionLink(KiloBundle.message("settings.checkpoints.displayName")) { e ->
             val src = e.source as? JComponent ?: return@ActionLink

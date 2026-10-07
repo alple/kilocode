@@ -6,7 +6,11 @@ import ai.kilocode.client.app.KiloAppService
 import ai.kilocode.client.app.KiloSessionService
 import ai.kilocode.client.app.KiloWorkspaceService
 import ai.kilocode.client.app.Workspace
+import ai.kilocode.client.deluxe.KiloParameterPicker
 import ai.kilocode.client.deluxe.KiloProjectParameterStore
+import ai.kilocode.client.deluxe.KiloRouteState
+import ai.kilocode.client.deluxe.KiloRoutingOptions
+import ai.kilocode.client.deluxe.routeAuthorSlug
 import ai.kilocode.client.diff.KiloDiffComparison
 import ai.kilocode.client.diff.KiloDiffEditorKind
 import ai.kilocode.client.diff.openKiloDiff
@@ -229,6 +233,9 @@ class SessionUi(
     private lateinit var connection: ConnectionPanel
 
     private lateinit var prompt: PromptPanel
+
+    /** Deluxe parameter control for the session header (model + route + effort + lock). */
+    private val parameters = KiloParameterPicker()
     private lateinit var completion: KiloPromptCompletionProvider
     private lateinit var load: LoadingPanel
     private lateinit var onboardingCard: OnboardingListCard
@@ -623,6 +630,7 @@ class SessionUi(
             completion = completion,
             cs = cs,
             hostedInEditorTab = manager?.hostedInEditorTab == true,
+            parameters = parameters,
         )
         connection = ConnectionPanel(this, controller)
         // The banner reports a broken session, so it owns the pointer where it sits: the transcript
@@ -725,6 +733,43 @@ class SessionUi(
                 )
                 app.toggleModelFavorite(item.provider, item.id)
             }
+            // The deluxe parameter control owns the visible model/route/effort surface in the
+            // session header; the legacy pickers above stay bound (hidden) for the Ctrl shortcuts.
+            parameters.onModel = { item ->
+                prompt.setAttachmentEnabled(item.attachment)
+                controller.selectModel(item.provider, item.id)
+            }
+            parameters.onRoute = { route -> controller.selectRoute(route) }
+            parameters.onVariant = { id -> controller.selectVariant(id) }
+            parameters.onClearVariant = { controller.clearVariant() }
+            parameters.onUnlock = { controller.unfreezeParameters() }
+            parameters.favorites = { app.favorites.value }
+            parameters.onFavoriteToggle = { item ->
+                Telemetry.send(
+                    "Model Favorite Toggled",
+                    mapOf("provider" to item.provider, "modelId" to item.id),
+                )
+                app.toggleModelFavorite(item.provider, item.id)
+            }
+            parameters.routesEnabled = { provider -> KiloRoutingOptions.getInstance().routesEnabled(provider) }
+            parameters.fetchRoutes = { provider, modelId, done ->
+                cs.launch {
+                    val result = runCatching {
+                        val slugs = routeAuthorSlug(modelId)
+                            ?: throw IllegalArgumentException("model id has no author/slug pair: $modelId")
+                        workspaces.routes(workspace.directory, slugs.first, slugs.second)
+                    }
+                    withContext(Dispatchers.Main) {
+                        if (disposed) return@withContext
+                        done(
+                            result.fold(
+                                onSuccess = { KiloRouteState.Ready(it) },
+                                onFailure = { err -> KiloRouteState.Failed(err.message) },
+                            ),
+                        )
+                    }
+                }
+            }
         }
 
         controller.addListener(this) { event ->
@@ -771,7 +816,17 @@ class SessionUi(
                     prompt.model.setItems(items, selected)
                     prompt.setAttachmentEnabled(items.firstOrNull { it.key == selected }?.attachment ?: true)
                     prompt.reasoning.setItems(m.variants.map { ReasoningPicker.Item(it, variantTitle(it)) }, m.variant)
-                    prompt.setResetVisible(m.modelOverride)
+                    parameters.sync(
+                        items = items,
+                        selected = selected,
+                        route = selected?.let { controller.routeFor(it) },
+                        variants = m.variants,
+                        variant = m.variant,
+                        frozen = m.parametersFrozen,
+                    )
+                    // The parameter control owns the model/route/effort surface while it is locked,
+                    // so the upstream reset affordance hides until an explicit unlock.
+                    prompt.setResetVisible(m.modelOverride && !m.parametersFrozen)
                     prompt.setReady(m.isReady())
                     prompt.refreshHighlights()
                 }

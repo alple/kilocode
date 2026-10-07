@@ -3344,4 +3344,83 @@ class KiloCliDataParserTest {
         }
         append('"')
     }
+
+    // ================================================================
+    // Group N — route list parsing
+    // ================================================================
+
+    @Nested
+    inner class Routes {
+
+        @Test
+        fun `parseRoutes - parses a full endpoint row`() {
+            val raw = """
+                [
+                  {
+                    "tag": "parasail",
+                    "provider_name": "Parasail",
+                    "name": "Parasail GLM",
+                    "quantization": "fp8",
+                    "status": 0,
+                    "context_length": 262144,
+                    "max_completion_tokens": 8192,
+                    "uptime": { "last30m": 0.99, "last_1d": 0.97 },
+                    "pricing": { "prompt": 2.5e-7, "completion": 1.2e-6, "input_cache_read": 1e-8, "discount": 0.1 }
+                  }
+                ]
+            """.trimIndent()
+            val routes = KiloCliDataParser.parseRoutes(raw)
+
+            assertEquals(1, routes.size)
+            val row = routes.single()
+            assertEquals("parasail", row.tag)
+            assertEquals("Parasail", row.providerName)
+            assertEquals("Parasail GLM", row.name)
+            assertEquals("fp8", row.quantization)
+            assertEquals(0, row.status)
+            assertEquals(262144L, row.contextLength)
+            assertEquals(8192L, row.maxCompletionTokens)
+            assertEquals(0.99, row.uptime?.last30m)
+            assertEquals(0.97, row.uptime?.last1d)
+            assertEquals(2.5e-7, row.pricing?.prompt)
+            assertEquals(1.2e-6, row.pricing?.completion)
+            assertEquals(1e-8, row.pricing?.inputCacheRead)
+            assertEquals(0.1, row.pricing?.discount)
+        }
+
+        @Test
+        fun `parseRoutes - accepts camelCase aliases`() {
+            val routes = KiloCliDataParser.parseRoutes(
+                """[{"tag":"t","providerName":"P","contextLength":1024,"uptime":{"last5m":0.5},"pricing":{"prompt":1.0}}]""",
+            )
+            val row = routes.single()
+            assertEquals("P", row.providerName)
+            assertEquals(1024L, row.contextLength)
+            assertEquals(0.5, row.uptime?.last5m)
+        }
+
+        @Test
+        fun `parseRoutes - tolerates missing fields and null scalars`() {
+            val routes = KiloCliDataParser.parseRoutes("""[{"tag":null}]""")
+            val row = routes.single()
+            assertEquals(null, row.tag)
+            assertEquals(null, row.providerName)
+            assertEquals(null, row.uptime)
+            assertEquals(null, row.pricing)
+            assertEquals(null, row.status)
+        }
+
+        @Test
+        fun `parseRoutes - skips non-object entries`() {
+            val routes = KiloCliDataParser.parseRoutes("""["junk", {"tag":"ok"}, 42]""")
+            assertEquals(listOf("ok"), routes.map { it.tag })
+        }
+
+        @Test
+        fun `parseRoutes - malformed body yields an empty list`() {
+            assertTrue(KiloCliDataParser.parseRoutes("not json").isEmpty())
+            assertTrue(KiloCliDataParser.parseRoutes("""{"not":"an array"}""").isEmpty())
+            assertTrue(KiloCliDataParser.parseRoutes("").isEmpty())
+        }
+    }
 }

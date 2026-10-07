@@ -30,6 +30,7 @@ class ListenerLifecycleTest : SessionControllerTestBase() {
             ViewChanged session
             AppChanged
             WorkspaceChanged
+            WorkspaceReady
         """, events)
     }
 
@@ -54,6 +55,7 @@ class ListenerLifecycleTest : SessionControllerTestBase() {
             ViewChanged session
             AppChanged
             WorkspaceChanged
+            WorkspaceReady
         """, events1)
     }
 

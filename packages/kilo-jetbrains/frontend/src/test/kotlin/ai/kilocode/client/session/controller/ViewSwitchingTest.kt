@@ -27,7 +27,7 @@ class ViewSwitchingTest : SessionControllerTestBase() {
         edt { m.prompt("hello") }
         flush()
 
-        assertControllerEvents("ViewChanged session", events)
+        assertControllerEvents("ViewChanged session\nWorkspaceReady", events)
         assertSession(
             """
             [app: DISCONNECTED] [workspace: PENDING]
@@ -61,7 +61,7 @@ class ViewSwitchingTest : SessionControllerTestBase() {
         edt { m.prompt("second") }
         flush()
 
-        assertControllerEvents("ViewChanged session", events)
+        assertControllerEvents("ViewChanged session\nWorkspaceReady", events)
     }
 
     fun `test recent sessions show after workspace ready`() {

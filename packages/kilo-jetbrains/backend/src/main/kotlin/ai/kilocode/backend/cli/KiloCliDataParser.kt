@@ -60,6 +60,9 @@ import ai.kilocode.rpc.dto.ProviderAuthOptionDto
 import ai.kilocode.rpc.dto.ProviderAuthPromptDto
 import ai.kilocode.rpc.dto.ProviderMetadataDto
 import ai.kilocode.rpc.dto.ProviderSettingsProviderDto
+import ai.kilocode.rpc.dto.RouteEndpointDto
+import ai.kilocode.rpc.dto.RoutePricingDto
+import ai.kilocode.rpc.dto.RouteUptimeDto
 import ai.kilocode.rpc.dto.PartTimeDto
 import ai.kilocode.rpc.dto.PermissionRuleDto
 import ai.kilocode.rpc.dto.PermissionRuleDecisionDto
@@ -542,6 +545,43 @@ object KiloCliDataParser {
             sessions = sessions,
             nextCursor = obj.str("nextCursor"),
         )
+    }
+
+    /**
+     * Parse the route-list response (`GET /kilo/routes/{author}/{slug}`) into endpoint rows.
+     * Tolerant of missing fields and null scalars; a malformed body yields an empty list so a
+     * sparse route catalog can never break the picker.
+     */
+    fun parseRoutes(raw: String): List<RouteEndpointDto> {
+        val arr = runCatching { json.parseToJsonElement(raw).jsonArray }.getOrNull() ?: return emptyList()
+        return arr.mapNotNull { elem ->
+            val item = runCatching { elem.jsonObject }.getOrNull() ?: return@mapNotNull null
+            RouteEndpointDto(
+                tag = item.str("tag"),
+                providerName = item.str("provider_name") ?: item.str("providerName"),
+                name = item.str("name"),
+                quantization = item.str("quantization"),
+                status = item.long("status")?.safeInt(),
+                contextLength = item.long("context_length") ?: item.long("contextLength"),
+                maxCompletionTokens = item.long("max_completion_tokens") ?: item.long("maxCompletionTokens"),
+                uptime = item["uptime"].obj()?.let { up ->
+                    RouteUptimeDto(
+                        last5m = up.num("last5m") ?: up.num("last_5m"),
+                        last30m = up.num("last30m") ?: up.num("last_30m"),
+                        last1d = up.num("last1d") ?: up.num("last_1d"),
+                    )
+                },
+                pricing = item["pricing"].obj()?.let { price ->
+                    RoutePricingDto(
+                        prompt = price.num("prompt"),
+                        completion = price.num("completion"),
+                        inputCacheRead = price.num("input_cache_read") ?: price.num("inputCacheRead"),
+                        inputCacheWrite = price.num("input_cache_write") ?: price.num("inputCacheWrite"),
+                        discount = price.num("discount"),
+                    )
+                },
+            )
+        }
     }
 
     /**

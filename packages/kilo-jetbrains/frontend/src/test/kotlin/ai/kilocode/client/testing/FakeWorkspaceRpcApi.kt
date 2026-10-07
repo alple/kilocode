@@ -9,6 +9,7 @@ import ai.kilocode.rpc.dto.FileSearchResultDto
 import ai.kilocode.rpc.dto.KiloWorkspaceStateDto
 import ai.kilocode.rpc.dto.KiloWorkspaceStatusDto
 import ai.kilocode.rpc.dto.ModelsWorkspaceDto
+import ai.kilocode.rpc.dto.RouteEndpointDto
 import ai.kilocode.rpc.dto.SetupScriptKind
 import ai.kilocode.rpc.dto.SetupScriptTargetDto
 import ai.kilocode.rpc.dto.WorkspaceFileDto
@@ -113,6 +114,15 @@ class FakeWorkspaceRpcApi : KiloWorkspaceRpcApi {
         assertNotEdt("models")
         modelsGate?.await()
         return models
+    }
+
+    var routeLists: MutableMap<String, List<RouteEndpointDto>> = mutableMapOf()
+    var routeCalls: MutableList<Pair<String, String>> = mutableListOf()
+
+    override suspend fun routes(directory: String, author: String, slug: String): List<RouteEndpointDto> {
+        assertNotEdt("routes")
+        routeCalls += author to slug
+        return routeLists["$author/$slug"] ?: emptyList()
     }
 
     override suspend fun config(directory: String): ConfigDto {
