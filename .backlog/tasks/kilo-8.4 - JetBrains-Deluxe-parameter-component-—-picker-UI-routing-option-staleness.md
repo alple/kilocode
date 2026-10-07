@@ -4,7 +4,7 @@ title: 'JetBrains: Deluxe parameter component — picker UI, routing option, sta
 status: In Progress
 assignee: []
 created_date: '2026-10-06 13:05'
-updated_date: '2026-10-07 10:29'
+updated_date: '2026-10-07 10:31'
 labels: []
 dependencies:
   - KILO-8.2
@@ -47,3 +47,28 @@ ordinal: 24000
 
 - Component/controller tests (route rows gated by the option; lock engages at first message; unfreeze flow; staleness keep-pin + notice); existing picker tests stay green; header binding swap covered by session UI tests.
 <!-- SECTION:DESCRIPTION:END -->
+
+## Comments
+
+<!-- COMMENTS:BEGIN -->
+created: 2026-10-07 10:31
+---
+**Parked mid-implementation (context budget)** — working tree holds an uncommitted, NOT-yet-compiling implementation. Next session resumes from here.
+
+**Done, uncommitted:** Bridge (compiles): shared `RouteEndpointDto.kt` (RouteEndpointDto/RouteUptimeDto/RoutePricingDto), `KiloWorkspaceRpcApi.routes(directory, author, slug)`, backend `KiloWorkspaceRpcApiImpl.routes` (OkHttp `GET /kilo/routes/{author}/{slug}?directory=…`, 404⇒empty), `KiloCliDataParser.parseRoutes`, `KiloWorkspaceService.routes` (throws so the picker can show Failed), `FakeWorkspaceRpcApi.routes` + `routeLists`/`routeCalls` test hooks. Deluxe files in `frontend/src/main/kotlin/ai/kilocode/client/deluxe/`: `KiloRoutingOptions.kt` (app-level option: enabled default off, provider list default openrouter+openrouter-private, sanitize with fallback to defaults, routesEnabled(provider)), `KiloParameterRows.kt` (KiloParamRow Lock/Model/Route/Effort/Note + kiloParameterRows builder reusing modelPickerRows + routeSectionRows w/ stale-pin note (keep-pin) + routeAuthorSlug + KiloRouteText pricing/uptime/degraded), `KiloParameterPicker.kt` (PickerButton; PickerPopup Mode.Multi + search; callbacks onModel/onRoute/onVariant/onClearVariant/onUnlock/favorites/fetchRoutes; fetch on popup-open and model-pick with generation token; lock icon while frozen), `KiloParameterRenderer.kt` (model rows mirror upstream ModelPickerRenderer incl. favorite stars; route rows tag/provider/quantization/uptime/pricing/degraded; effort rows; Lock row with unlock action; weak text while frozen), `KiloRoutingConfigurable.kt` (settings page + ProviderList add/edit/remove). Shared edits: `SessionModel.parametersFrozen` (loadHistory⇒history.isNotEmpty, clear⇒false), `SessionController` (freeze in dispatch() firing WorkspaceReady; unfreezeParameters(); clearVariant() + store.clearVariant; frozen guards in selectModel/selectVariant/selectRoute/clearModelOverride; routeFor internal; selectVariant/selectRoute fire WorkspaceReady so the SessionUi branch re-syncs the picker synchronously — NO new SessionModelEvent), `PromptPanel` (`parameters: PickerButton?` ctor param; bar swaps model+reasoning for it when set; idleFill/onPickClose applied), `SessionUi` (parameters field + wiring + WorkspaceReady `parameters.sync(...)` + `setResetVisible(m.modelOverride && !m.parametersFrozen)`), `KiloWorkspaceService.routes`, store `clearVariant`, bundle keys `param.picker.*` + `settings.routing.*`, XML registration `ai.kilocode.jetbrains.settings.routing` + root-page ActionLink.
+---
+
+created: 2026-10-07 10:31
+---
+Design notes: popup stays open (Mode.Multi) so model→route→effort can be set in one pass; search filters model rows only; route section rendered only when `routesApply(routesEnabled, item)`; freeze triggers = dispatch() of prompt/command + non-empty history at load; unlock = explicit popup Lock row → controller.unfreezeParameters(); next dispatch re-freezes; picks refused while frozen both picker-side and controller-side. Staleness: fetch per popup-open/pick with generation token; Ready + pin missing ⇒ Note row (param.picker.stale) + LOG.info; pin stays in store/pref until explicit re-pick.
+
+**KNOWN BROKEN — does not compile (fix in order):** (1) `KiloParameterRenderer.kt` — import must be `ai.kilocode.client.session.ui.style.SessionUiStyle`; verify `SimpleTextAttributes` import present; (2) `KiloParameterPicker.kt` — add `import javax.swing.JList`; public `fetchRoutes` exposes internal `KiloRouteState` ⇒ make the class `internal`; `showPopup()` calls removed `currentRows()` — use `rowsFor(\"\")` and keep the PickerPopup ref local for `refresh` while the JBPopup gets the closed-listener; `LOG.info { }` must become `LOG.info("…")` (KiloLog.info takes a String, not a lambda); (3) verify `AllIcons.Actions.Lock` exists on the platform (fallback `AllIcons.Nodes.Lock`); (4) `KiloRoutingConfigurable.kt` may still hide errors — recompile after the above; (5) then `./gradlew compileKotlin test` from `packages/kilo-jetbrains/`.
+
+**Not started:** tests — controller lock/unfreeze/guards (ParameterStoreSelectionTest style: `model.parametersFrozen`, clearVariant, refusal paths, re-freeze after unlock), rows gating (`routeSectionRows` off⇒null, on⇒Auto+endpoints+stale note), `parseRoutes` parser test, `KiloRoutingOptions` sanitize/defaults, settings page isModified/apply; confirm existing picker/session tests stay green.
+---
+
+created: 2026-10-07 10:31
+---
+Continuation context: all work lives in the working tree (git status shows 12 modified + 6 new files, none committed). Files: shared/src/main/kotlin/ai/kilocode/rpc/dto/RouteEndpointDto.kt (new), shared/…/KiloWorkspaceRpcApi.kt, backend/…/cli/KiloCliDataParser.kt (parseRoutes + imports), backend/…/rpc/KiloWorkspaceRpcApiImpl.kt (routes impl), frontend/…/app/KiloWorkspaceService.kt (routes wrapper), frontend/…/deluxe/{KiloRoutingOptions,KiloParameterRows,KiloParameterRenderer,KiloParameterPicker,KiloRoutingConfigurable}.kt, frontend/…/session/model/SessionModel.kt, …/session/controller/SessionController.kt, …/session/SessionUi.kt, …/session/ui/prompt/PromptPanel.kt, frontend/…/settings/KiloSettingsConfigurable.kt, frontend/src/main/resources/kilo.jetbrains.frontend.xml + messages/KiloBundle.properties, frontend/src/test/…/testing/FakeWorkspaceRpcApi.kt. Full design + decisions live in the tickets KILO-7.2/7.3/7.6, ADR-0001/0002 and docs/adr/. Re-read this ticket's two comments before continuing; this comment ends the parking note.
+---
+<!-- COMMENTS:END -->
