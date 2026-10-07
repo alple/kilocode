@@ -1,9 +1,11 @@
 ---
 id: KILO-8.6
 title: 'Lux dev builds: seed the branch database from kilo.db'
-status: To Do
-assignee: []
+status: In Progress
+assignee:
+  - dev1
 created_date: '2026-10-07 15:32'
+updated_date: '2026-10-07 15:34'
 labels: []
 dependencies: []
 parent_task_id: KILO-8
