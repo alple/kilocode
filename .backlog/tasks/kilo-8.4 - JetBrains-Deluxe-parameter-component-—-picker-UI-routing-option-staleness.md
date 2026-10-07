@@ -1,10 +1,10 @@
 ---
 id: KILO-8.4
 title: 'JetBrains: Deluxe parameter component — picker UI, routing option, staleness'
-status: In Progress
+status: Testing
 assignee: []
 created_date: '2026-10-06 13:05'
-updated_date: '2026-10-07 10:31'
+updated_date: '2026-10-07 12:28'
 labels: []
 dependencies:
   - KILO-8.2
@@ -72,3 +72,9 @@ created: 2026-10-07 10:31
 Continuation context: all work lives in the working tree (git status shows 12 modified + 6 new files, none committed). Files: shared/src/main/kotlin/ai/kilocode/rpc/dto/RouteEndpointDto.kt (new), shared/…/KiloWorkspaceRpcApi.kt, backend/…/cli/KiloCliDataParser.kt (parseRoutes + imports), backend/…/rpc/KiloWorkspaceRpcApiImpl.kt (routes impl), frontend/…/app/KiloWorkspaceService.kt (routes wrapper), frontend/…/deluxe/{KiloRoutingOptions,KiloParameterRows,KiloParameterRenderer,KiloParameterPicker,KiloRoutingConfigurable}.kt, frontend/…/session/model/SessionModel.kt, …/session/controller/SessionController.kt, …/session/SessionUi.kt, …/session/ui/prompt/PromptPanel.kt, frontend/…/settings/KiloSettingsConfigurable.kt, frontend/src/main/resources/kilo.jetbrains.frontend.xml + messages/KiloBundle.properties, frontend/src/test/…/testing/FakeWorkspaceRpcApi.kt. Full design + decisions live in the tickets KILO-7.2/7.3/7.6, ADR-0001/0002 and docs/adr/. Re-read this ticket's two comments before continuing; this comment ends the parking note.
 ---
 <!-- COMMENTS:END -->
+
+## Final Summary
+
+<!-- SECTION:FINAL_SUMMARY:BEGIN -->
+Resumed from the parked working tree and finished the implementation. Compile fixes: correct SessionUiStyle import + missing SimpleTextAttributes/RouteEndpointDto imports and a KiloRouteText-based routeDetails helper in KiloParameterRenderer; javax.swing.JList import, internal visibility, rowsFor("") instead of the removed currentRows(), String-based KiloLog.info in KiloParameterPicker; Note row was missing its `: KiloParamRow` supertype; ModelPickerRow-typed renderModel; lock icon is AllIcons.Nodes.Locked (Actions.Lock and Nodes.Lock do not exist on IU-2026.1 — verified against the platform jar); settings page: javax.swing.ScrollPaneConstants import, createComponent returns JComponent (internal KiloRoutingPage no longer leaks), receiver-based calls instead of self-referencing the list under construction, DefaultListCellRenderer import; PromptPanel gained the PickerButton import for the parameters ctor param. Test updates for the new freeze semantics: WorkspaceReady added to exact event sequences (SessionCreation/ViewSwitching/ListenerLifecycle/HistoryLoading) and the post-failure selection tests now unlock before selecting (SessionRetry x6, ParameterStoreSelection) per ADR-0001; KiloSettingsConfigurableTest root-page order includes Model Routing. New tests: ParameterFreezeTest (10: unlocked start, freeze at first message with event, silent re-lock, frozen-at-load, refusal of selectModel/selectRoute/selectVariant/clearVariant/clearModelOverride while frozen incl. no store writes, unlock + re-freeze on next message, no-op unlock, WorkspaceReady from route/effort picks, clear resets), KiloParameterRowsTest (15: routeAuthorSlug, Auto+endpoints, stale-pin note keep-pin, loading/failed notes, routesApply gate, search narrows to models, lock row, stable row keys, pricing/uptime/quantization/degraded helpers), KiloRoutingOptionsTest (6: defaults off + OpenRouter pair, sanitize trim/dedup/blank-drop, empty→defaults fallback, routesEnabled gate + case-sensitive ids, loadState sanitize, service round-trip), KiloRoutingConfigurableTest (5: isModified fresh/behind-open-page, toggle→apply write-through, provider sanitize, gate off disables page), KiloParameterPickerTest (6: empty disabled, composed label, Auto/hidden route part, lock icon, id→key resolution, favorite keys), KiloCliDataParserTest Routes group (5: full row, camelCase aliases, tolerant nulls, skips non-objects, malformed→empty), PromptPanel binding swap test (parameters picker replaces model+reasoning in the bar). Result: `./gradlew test` = 4461 tests, 2 failures — TitleButtonTest New Session/New Worktree centering, confirmed failing on a clean HEAD (pre-existing, unrelated; verified via stash). `./gradlew typecheck` green. Remaining for review: manual sandbox pass of the popup (route fetch against a live CLI, freeze/unfreeze UX) is not covered by tests.
+<!-- SECTION:FINAL_SUMMARY:END -->
