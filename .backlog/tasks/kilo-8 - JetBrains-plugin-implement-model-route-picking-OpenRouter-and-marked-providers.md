@@ -6,7 +6,7 @@ title: >-
 status: Done
 assignee: []
 created_date: '2026-10-06 12:33'
-updated_date: '2026-10-07 12:50'
+updated_date: '2026-10-07 15:33'
 labels: []
 dependencies: []
 priority: high
@@ -39,3 +39,18 @@ The design is settled. Source of truth: the six resolved decision tickets on the
 - **CLI-first sequencing**: the CLI route-list proxy endpoint + DTO must land before the picker can show routes.
 - kilo.json `options.provider.order` remains the working config-only interim (non-OpenRouter providers stay there).
 <!-- SECTION:DESCRIPTION:END -->
+
+## Comments
+
+<!-- COMMENTS:BEGIN -->
+created: 2026-10-07 15:33
+---
+Field test of kilo.jetbrains-7.8.1-lux4.zip surfaced three reports; root causes identified by running the bundled CLI live against the real data root:
+
+1. **No conversation history — the channel-isolated database, not the plugin.** The bundled repo CLI stamps its installation channel from the building branch (`packages/script/src/index.ts` falls back to `git branch --show-current`), and non-release channels get their own database (`packages/opencode/src/storage/db.ts` `getChannelPath`): `kilo-my-features.db` (empty) instead of `kilo.db` (real history). Verified: the bundled CLI returned an empty session list for the repo directory, and the branch adds no new migrations relative to main. Decision: keep the isolation (the original DB must stay untouched so the stable plugin never meets dev schema changes) and seed the branch DB from `kilo.db` — KILO-8.6.
+2. **"No sign of routing" — the gate defaulted off.** The user never enabled Model Routing in settings and concluded the feature was missing; the route endpoint itself works (bundled CLI `/kilo/routes/{author}/{slug}` returned a live route list). Decision: enable routing by default — KILO-8.6 sibling KILO-8.5 flips the KILO-7.6 default.
+3. **"Effort locked" — freeze worked as designed.** Model+route+effort freeze at the session's first message and unlock via the explicit Lock row in the picker (ADR-0001); the row was not noticed. No code change; re-judge discoverability after the default-on retest.
+
+Live-testing follow-up: the sandbox loop (`runIdeSplitMode`, repo CLI via `kilo.cli.pinned=false`) replaces the build-zip-install-restart cycle that made field testing expensive in the first place.
+---
+<!-- COMMENTS:END -->
