@@ -1,11 +1,11 @@
 ---
 id: KILO-8.3
 title: 'JetBrains: per-project parameter store + session selection wiring'
-status: In Progress
+status: Testing
 assignee:
   - dev1
 created_date: '2026-10-06 13:05'
-updated_date: '2026-10-07 07:52'
+updated_date: '2026-10-07 08:38'
 labels: []
 dependencies: []
 parent_task_id: KILO-8
@@ -98,4 +98,9 @@ Verified all ticket anchors against the current tree; drift ≤ a few lines. New
 ### Interpretation notes (follow directly from ADR-0002/KILO-8 goal, recorded for review)
 - Store variant tier sits between session pin and model.json variant map — the ticket's "pref → model.json map → Auto" sentence omits the store, but "new sessions resolve fresh from the store" requires it.
 - Dead model.json write chain (RPC methods incl. shared interface, service, manager, DTOs) is deleted, not just uncalled — keeps the "JetBrains stops writing model.json" constraint real.
+
+### Deviation from the recorded plan (executed 2026-10-07)
+- The narrowed background re-resolution needed more than a `model.model == null` guard: a blank session can resolve from config before the model.json tier loads, and an opened-but-unresolved session (empty history) must still complete its bootstrap from the store. Final shape: `syncBackgroundSelection()` — opened sessions with a resolved selection never re-resolve; a blank (or unresolved) session re-resolves only when the chain-relevant tier data (`model`/`variant`/`recent` maps, config) changed since its last resolution — so a favorites refresh or another surface's pick never mutates a resolved selection, while late bootstrap arrivals complete it once. Opened sessions additionally get `refreshVariants()` (variant-list validity only) on catalog refresh; without it the SessionRetryTest effort flow broke (selectVariant early-returns on an empty stale list).
+- `ChatDtoSerializationTest` lives in backend (`backend/src/test/kotlin/ai/kilocode/backend/cli/`), not shared; route round-trip tests added there.
+- PromptSelection route mapping kept; dialog syncReasoning reads the store variant tier first, then the model.json map, then the forced display default (kept per plan).
 <!-- SECTION:PLAN:END -->
