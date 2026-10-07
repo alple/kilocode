@@ -5,7 +5,7 @@ status: Testing
 assignee:
   - dev1
 created_date: '2026-10-06 13:05'
-updated_date: '2026-10-07 08:38'
+updated_date: '2026-10-07 08:39'
 labels: []
 dependencies: []
 parent_task_id: KILO-8
@@ -104,3 +104,36 @@ Verified all ticket anchors against the current tree; drift ≤ a few lines. New
 - `ChatDtoSerializationTest` lives in backend (`backend/src/test/kotlin/ai/kilocode/backend/cli/`), not shared; route round-trip tests added there.
 - PromptSelection route mapping kept; dialog syncReasoning reads the store variant tier first, then the model.json map, then the forced display default (kept per plan).
 <!-- SECTION:PLAN:END -->
+
+## Implementation Notes
+
+<!-- SECTION:NOTES:BEGIN -->
+Background-event guard design took two iterations: a plain `model.model == null` guard regressed tests where the model.json tier loads after the config-tier resolution (ConfigSelectionTest tier scenarios), and a `ref != null` guard broke SessionRecoveryTest (open empty-history sessions never bootstrap). The final tier-growth comparison (`tierShape(model/variant/recent) + config`) satisfies both; documented on `syncBackgroundSelection`.
+
+TitleButtonTest (2 failures) and the detekt baseline were confirmed pre-existing by stashing the change and re-running on the clean tree.
+
+Favorite-only model.json changes are deliberately NOT treated as bootstrap growth (compared via chain-relevant fields only) — otherwise a favorites refresh would leak another session's store pick into an open session (ConfigSelectionTest selectModel case).
+<!-- SECTION:NOTES:END -->
+
+## Final Summary
+
+<!-- SECTION:FINAL_SUMMARY:BEGIN -->
+Implemented the per-project parameter store and session selection wiring for the JetBrains plugin (ADR-0002, KILO-8.3).
+
+**What changed**
+
+- **New store** (`frontend/src/main/kotlin/ai/kilocode/client/deluxe/KiloProjectParameterStore.kt`): the plugin's first project-level light service — `@State` into workspace.xml (`RoamingType.DISABLED`), state = model pick per agent ("provider/model"), reasoning effort and OpenRouter route per (provider, model), remembered mode/agent. All JetBrains parameter writes now go here: in-session model/effort/route/mode picks, New Worktree dialog picks, and reset-to-default (clears the agent's stored pick). `KiloPluginSettings.kilo.session.agent` and its PropertiesComponent accessors are removed; the old key is simply no longer read (no migration).
+- **model.json is now read-only for this plugin**: the whole selection/variant write path was deleted — `KiloAppService.selectModel/selectVariant`, shared RPC `KiloAppRpcApi.updateModelSelection/updateModelVariant`, `KiloAppRpcApiImpl` overrides, `KiloBackendModelStateManager.selection()/variant()`, and the `ModelSelectionUpdateDto`/`ModelVariantUpdateDto` DTOs. Favorites keep their existing cross-surface write path (per ADR-0002's carve-out).
+- **Model chain** (`SessionSelection.kt`): the project store tier sits on top of the five existing tiers (store → model.json per-agent override (read-only legacy) → per-agent config → global config → recent → kilo-auto). The dead pre-READY `ProvidersDto.defaults` branch is deleted — bootstrap degrades to the first picker item. The forced `firstOrNull()` variant tier is gone in `SessionController.selectResolvedModel`: chain is session pin → store effort → model.json variant map → Auto (null = provider default).
+- **On-demand-only re-resolution** (`syncBackgroundSelection`): opened sessions with a resolved selection are never re-resolved by background events (catalog reload, config patch, model-state refresh, another session's pick); a blank or unresolved session re-resolves only when chain-relevant tier data changed since its last resolution, so late bootstrap arrivals complete it exactly once. Opened sessions get variant-list-only refresh on catalog changes (`refreshVariants`). Explicit actions (pick, agent switch, applySelection, history/message sync) resolve as before.
+- **Per-turn route transport**: `PromptDto` gains `route: String?`, emitted by `buildPromptJson` after `variant`; `promptDto` and both retry paths fill it from the session pin (`prefRoute`, keyed to the sent model) falling back to the store; new `selectRoute(value?)` pins/clears (null = Auto). Commands still carry no route (CLI `CommandInput` has no such field — verified). `ChatLogSummary` logs `route=` for parity. No CLI change (KILO-8.2's `PromptInput.route` consumes it as-is).
+
+**Tests**
+
+- New: `KiloProjectParameterStoreTest` (round-trip, per-agent model set/clear, per-key variant/route, blank-value filtering, fresh-empty state); `ParameterStoreSelectionTest` (16 cases: store tier over model.json, legacy tiers when store empty, Auto-when-never-picked, store inheritance into the next session without model.json writes, background-event stability for opened sessions + bootstrap completion for blank ones, route pin/clear/inheritance in prompts and both retry paths).
+- Updated: `ConfigSelectionTest`, `SessionControllerSelectionTest`, `SessionCreationTest`, `SessionRetryTest`, `PromptLifecycleTest`, `NewWorktreeDialogTest` (store instead of model.json writes; Auto assertions), parser/serialization route cases, `SessionControllerTestBase` (fresh store per test), `KiloBackendModelStateManagerTest` (write-path cases removed).
+
+**Verification**: `./gradlew typecheck` — all modules green; `./gradlew test` — shared + backend green, frontend 4418 tests with only the 2 pre-existing `TitleButtonTest` failures (verified failing on the clean tree too — environment-dependent font metrics). Detekt is a pre-existing failing baseline (same counts on the clean tree), not part of this package's gates. A changeset was added (`.changeset/jetbrains-per-project-parameter-store.md`).
+
+**Risks/follow-ups**: KILO-8.4 (picker UI + staleness notice) is unblocked — it adds the route picker UI against `selectRoute` and the `PromptSelection.route` drop-in. The never-picked-effort-Auto change surfaces in the reasoning picker as no preselected row until 8.4 lands the Auto row.
+<!-- SECTION:FINAL_SUMMARY:END -->
