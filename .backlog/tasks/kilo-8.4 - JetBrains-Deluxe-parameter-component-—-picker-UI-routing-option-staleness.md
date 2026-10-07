@@ -1,10 +1,10 @@
 ---
 id: KILO-8.4
 title: 'JetBrains: Deluxe parameter component — picker UI, routing option, staleness'
-status: Testing
+status: Done
 assignee: []
 created_date: '2026-10-06 13:05'
-updated_date: '2026-10-07 12:28'
+updated_date: '2026-10-07 12:50'
 labels: []
 dependencies:
   - KILO-8.2
