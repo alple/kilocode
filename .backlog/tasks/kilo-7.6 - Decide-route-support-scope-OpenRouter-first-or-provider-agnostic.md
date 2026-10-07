@@ -4,7 +4,7 @@ title: 'Decide route-support scope: OpenRouter-first or provider-agnostic'
 status: Done
 assignee: []
 created_date: '2026-10-06 09:19'
-updated_date: '2026-10-06 11:02'
+updated_date: '2026-10-07 15:33'
 labels:
   - 'wayfinder:grilling'
 dependencies:
@@ -42,5 +42,10 @@ Resolved. The decision:
 3. Consequence for the route-list fetch (decided live-via-CLI in KILO-7.2): the fetch surface remains to be named in implementation planning (additive RPC/HTTP), independent of this matching decision.
 
 Evidence: KILO-7.5 findings (endpoints API public, tag slugs); KILO-4 description (openrouter-private clone shares npm/api, so id-list matching covers both); `Provider.Info.source` is provenance-only (env/config/custom/api), not protocol — hence client-side matching via the option list rather than server-declared capability.
+---
+
+created: 2026-10-07 15:33
+---
+Default flipped (field-test decision, KILO-8.5): the routing gate now defaults ON. The off-by-default choice made the whole route feature invisible to a tester who never found the settings page; an explicit off still hides everything.
 ---
 <!-- COMMENTS:END -->
