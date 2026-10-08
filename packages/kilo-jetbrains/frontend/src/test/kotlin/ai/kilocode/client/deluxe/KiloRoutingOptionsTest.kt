@@ -3,8 +3,9 @@ package ai.kilocode.client.deluxe
 import com.intellij.testFramework.fixtures.BasePlatformTestCase
 
 /**
- * The Deluxe "enable model routing" option: off by default, the OpenRouter pair as the default
- * route-capable provider list, sanitized updates, and the [KiloRoutingOptions.routesEnabled] gate.
+ * The Deluxe "enable model routing" option: on by default (KILO-8.5), the OpenRouter pair as the
+ * default route-capable provider list, sanitized updates, and the [KiloRoutingOptions.routesEnabled]
+ * gate. A stored off survives and hides all route UI.
  */
 class KiloRoutingOptionsTest : BasePlatformTestCase() {
 
@@ -16,12 +17,13 @@ class KiloRoutingOptionsTest : BasePlatformTestCase() {
         }
     }
 
-    fun `test defaults are off with the OpenRouter pair`() {
+    fun `test defaults are on with the OpenRouter pair`() {
         val options = KiloRoutingOptions()
 
-        assertFalse(options.enabled)
+        assertTrue(options.enabled)
         assertEquals(KiloRoutingOptions.DEFAULT_PROVIDERS, options.providers)
-        assertFalse(options.routesEnabled("openrouter"))
+        assertTrue(options.routesEnabled("openrouter"))
+        assertTrue(options.routesEnabled("openrouter-private"))
     }
 
     fun `test sanitize trims dedups and drops blanks`() {
@@ -53,6 +55,14 @@ class KiloRoutingOptionsTest : BasePlatformTestCase() {
 
         assertTrue(options.enabled)
         assertEquals(listOf("x"), options.providers)
+    }
+
+    fun `test a stored off survives loadState`() {
+        val options = KiloRoutingOptions()
+        options.loadState(KiloRoutingOptions.State(enabled = false, providers = mutableListOf("openrouter")))
+
+        assertFalse("An explicit opt-out must not be reset by the on default", options.enabled)
+        assertFalse(options.routesEnabled("openrouter"))
     }
 
     fun `test the service instance carries update and routesEnabled`() {

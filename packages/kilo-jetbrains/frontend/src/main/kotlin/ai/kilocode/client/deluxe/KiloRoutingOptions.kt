@@ -8,8 +8,9 @@ import com.intellij.openapi.components.service
 
 /**
  * Deluxe-only "enable model routing" option (KILO-8.4): gates every piece of route UI in the
- * plugin. When [enabled] is off (the default) no route UI exists anywhere; the parameter picker
- * then shows model + reasoning effort only.
+ * plugin. When [enabled] is off, no route UI exists anywhere; the parameter picker then shows
+ * model + reasoning effort only. The option defaults to on (KILO-8.5) so route choice is
+ * visible out of the box — an explicit off from settings still hides everything.
  *
  * The option carries the list of provider ids that are treated as route-capable. It defaults to
  * the OpenRouter pair and can be extended (custom-URL OpenRouter clones) from the routing settings
@@ -23,7 +24,7 @@ import com.intellij.openapi.components.service
 class KiloRoutingOptions : PersistentStateComponent<KiloRoutingOptions.State> {
 
     data class State(
-        var enabled: Boolean = false,
+        var enabled: Boolean = true,
         var providers: MutableList<String> = DEFAULT_PROVIDERS.toMutableList(),
     )
 

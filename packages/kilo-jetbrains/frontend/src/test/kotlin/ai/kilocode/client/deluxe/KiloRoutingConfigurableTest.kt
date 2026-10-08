@@ -39,6 +39,8 @@ class KiloRoutingConfigurableTest : BasePlatformTestCase() {
     }
 
     fun `test toggling the page writes through apply`() {
+        val options = KiloRoutingOptions.getInstance()
+        options.update(enabled = false, providers = KiloRoutingOptions.DEFAULT_PROVIDERS)
         val cfg = KiloRoutingConfigurable()
         val page = cfg.createComponent() as JComponent
         val toggle = toggles(page).single()
