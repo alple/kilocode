@@ -1,13 +1,13 @@
 ---
 id: KILO-9.2
 title: Design the favorites management window and the labeled-favorites functionality
-status: Backlog
+status: To Do
 assignee: []
 created_date: '2026-10-09 09:27'
+updated_date: '2026-10-09 09:35'
 labels:
   - 'wayfinder:grilling'
-dependencies:
-  - KILO-9.1
+dependencies: []
 parent_task_id: KILO-9
 priority: high
 type: task
@@ -21,9 +21,20 @@ ordinal: 29000
 
 The session parameter picker (KILO-8.4) shows a flat model list with route/effort sections buried below the fold, and favorites are flat `(provider, model)` pairs with no memory of route or effort. The vision: restore or clone the old popup, and add a completely new window to manage favorites — finding the best model/route/effort combination, naming it, assigning labels, and those labels then determine which favorites the session picker shows.
 
-## What this ticket produces
+## Decisions to settle while designing (the fog)
 
-The decided design for the whole feature: the management window (shape, entry point, module placement) and its functionality (composing model + route + effort into a named preset, label management, label-driven filtering in the session popup), plus the fate of the old popup and of the existing flat favorites. Deliverables: ADR + spec, then seeded build tickets. Blocked until KILO-9.1 records the decisions it exists to make; this ticket must not re-litigate them.
+The vision is deliberately loose; these are settled as part of the design work, not guessed:
+
+1. **Which "old popup"?** Two candidates: the upstream `ModelPicker` popup (still wired for Ctrl shortcuts but hidden from the header since the KILO-8.4 binding swap) and the Deluxe `KiloParameterPicker` popup (ADR-0001). Resurrect the upstream picker as the favorites display, clone it into a Deluxe-owned surface, or keep the parameter picker and layer favorites around it — ADR-0001's churn-avoidance constraints apply.
+2. **What is a favorite?** Today: flat `(provider, model)` pairs via `app.favorites` / `toggleModelFavorite` (`ModelSelectionDto`). Proposed: a named preset of model + route + effort. Replace the flat favorites, extend them, or run both with a migration?
+3. **Labels**: vocabulary model (user-created tags), storage (per-project parameter store vs app-level IDE state vs CLI-visible config), scope (project vs global), and whether presets need any CLI visibility.
+4. **How do labels drive the picker?** Which favorites show in the session popup — manual filter selection, context-based auto-filtering, a default label, or something else?
+5. **"Finding the best model/route/effort combination"**: what the management window offers — route endpoint data (uptime/pricing/quantization from the CLI `/kilo/routes` proxy), benchmark scores, or plain manual composition.
+6. **The management window's shape**: tool window, modal dialog, or settings page; entry point; module placement under the Deluxe package conventions.
+
+## Deliverables
+
+ADR + spec covering the management window and the labeled-favorites functionality (composing a preset with route data in view, naming, label management, label-driven session-picker filtering, fate of the existing flat favorites), then seeded build tickets as children of KILO-9.
 
 ## Design inputs from the route-picker session
 
@@ -34,16 +45,17 @@ The decided design for the whole feature: the management window (shape, entry po
 
 ## References
 
-- KILO-9.1 (blocking): the decisions this design consumes.
 - ADR-0001 (Deluxe-owned route picker) and ADR-0002 (per-project parameter store): conventions and constraints.
 - KILO-7.5 (OpenRouter endpoints survey): route data available to the window.
 <!-- SECTION:DESCRIPTION:END -->
 
 ## Acceptance Criteria
 <!-- AC:BEGIN -->
-- [ ] #1 An ADR in docs/adr/ records the decided design: favorites data model (named model+route+effort presets with labels), storage location, the management window shape and entry point, and the popup surface that displays labeled favorites
-- [ ] #2 A spec (epic description update or Backlog document) details the functionality enough to seed build tickets: composing a preset from model, route and effort with route data in view; naming; assigning and managing labels; how the session picker filters favorites by labels; and what happens to the existing flat favorites
-- [ ] #3 The diagnosed parameter-picker popup defects (route section below the fold, missing loading state on first open, scroll reset when the route fetch completes) are each addressed by the design or explicitly ruled in or out with rationale
-- [ ] #4 The design follows ADR-0001 conventions: Deluxe-owned surfaces in the fork-marked package, minimal upstream edits, no new shared provider-state DTO fields, Swing + platform components only
-- [ ] #5 Build tickets are seeded from the spec as children of KILO-9 with dependency edges, or the follow-up that seeds them is recorded on the map
+- [ ] #1 Each fog question (popup surface, favorite data model, labels storage and scoping, label-driven filtering, route/effort selection aid, window shape) has a written decision with rationale and rejected alternatives recorded in the ADR or a resolution comment
+- [ ] #2 An ADR in docs/adr/ records the decided design: favorites data model (named model+route+effort presets with labels), storage location, the management window shape and entry point, and the popup surface that displays labeled favorites
+- [ ] #3 A spec (epic description update or Backlog document) details the functionality enough to seed build tickets: composing a preset from model, route and effort with route data in view; naming; assigning and managing labels; how the session picker filters favorites by labels; and what happens to the existing flat favorites
+- [ ] #4 The diagnosed parameter-picker popup defects (route section below the fold, missing loading state on first open, scroll reset when the route fetch completes) are each addressed by the design or explicitly ruled in or out with rationale
+- [ ] #5 The design follows ADR-0001 conventions: Deluxe-owned surfaces in the fork-marked package, minimal upstream edits, no new shared provider-state DTO fields, Swing + platform components only
+- [ ] #6 Any question still unresolved after the design pass becomes a new child ticket of KILO-9 or is recorded under the map's Not-yet-specified section
+- [ ] #7 Build tickets are seeded from the spec as children of KILO-9 with dependency edges, or the follow-up that seeds them is recorded on the map
 <!-- AC:END -->
