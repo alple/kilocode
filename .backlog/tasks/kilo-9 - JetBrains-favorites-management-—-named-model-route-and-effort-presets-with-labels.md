@@ -6,6 +6,7 @@ title: >-
 status: To Do
 assignee: []
 created_date: '2026-10-09 09:27'
+updated_date: '2026-10-09 09:35'
 labels:
   - 'wayfinder:map'
 dependencies: []
@@ -35,7 +36,7 @@ Skills: grilling + domain-modeling for decision tickets; jetbrains-ui / jetbrain
 
 ## Not yet specified
 
-Implementation slicing (build tickets) after the design lands; storage details for presets and labels (per-project store vs app-level IDE state vs CLI-visible config); migration of existing flat favorites; whether the management window is IDE-only or needs CLI/TUI parity. These hang on the fog-clearing ticket.
+Implementation slicing (build tickets) — seeded by the design ticket once the design lands; anything the design pass leaves unresolved graduates into fresh tickets.
 
 ## Out of scope
 
