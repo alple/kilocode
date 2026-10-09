@@ -1,9 +1,10 @@
 ---
 id: KILO-9.3
 title: 'JetBrains: favorites management window'
-status: To Do
+status: Testing
 assignee: []
 created_date: '2026-10-09 12:31'
+updated_date: '2026-10-09 15:09'
 labels: []
 milestone: 'JetBrains: favorites management'
 dependencies:
