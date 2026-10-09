@@ -6,11 +6,10 @@ import ai.kilocode.client.app.KiloAppService
 import ai.kilocode.client.app.KiloSessionService
 import ai.kilocode.client.app.KiloWorkspaceService
 import ai.kilocode.client.app.Workspace
+import ai.kilocode.client.deluxe.KiloFavoritePresetStore
 import ai.kilocode.client.deluxe.KiloParameterPicker
 import ai.kilocode.client.deluxe.KiloProjectParameterStore
-import ai.kilocode.client.deluxe.KiloRouteState
 import ai.kilocode.client.deluxe.KiloRoutingOptions
-import ai.kilocode.client.deluxe.routeAuthorSlug
 import ai.kilocode.client.diff.KiloDiffComparison
 import ai.kilocode.client.diff.KiloDiffEditorKind
 import ai.kilocode.client.diff.openKiloDiff
@@ -40,6 +39,7 @@ import ai.kilocode.client.session.ui.ReasoningPicker
 import ai.kilocode.client.session.ui.RevertBanner
 import ai.kilocode.client.session.ui.mode.ModePicker
 import ai.kilocode.client.session.ui.model.ModelPicker
+import ai.kilocode.client.session.ui.model.ModelText
 import ai.kilocode.client.session.ui.prompt.KiloPromptCompletionProvider
 import ai.kilocode.client.session.ui.prompt.MentionAction
 import ai.kilocode.client.session.ui.prompt.PromptDataKeys
@@ -155,6 +155,7 @@ class SessionUi(
     private val workspaces: KiloWorkspaceService = service(),
     private val onboarding: OnboardingController = service<KiloOnboardingService>(),
     private val store: KiloProjectParameterStore = project.getService(KiloProjectParameterStore::class.java),
+    private val presetStore: KiloFavoritePresetStore = KiloFavoritePresetStore.getInstance(),
     private val timers: UiTimerSource = UiTimers,
 ) : JPanel(BorderLayout()), Disposable, SessionEditorStyleTarget, UiDataProvider, SessionActions {
 
@@ -735,41 +736,38 @@ class SessionUi(
             }
             // The deluxe parameter control owns the visible model/route/effort surface in the
             // session header; the legacy pickers above stay bound (hidden) for the Ctrl shortcuts.
+            // Preset picks (ADR-0003) land model + route + effort as one; a plain model pick
+            // inherits the store's route/effort. The popup itself performs no route fetching.
             parameters.onModel = { item ->
                 prompt.setAttachmentEnabled(item.attachment)
                 controller.selectModel(item.provider, item.id)
             }
-            parameters.onRoute = { route -> controller.selectRoute(route) }
-            parameters.onVariant = { id -> controller.selectVariant(id) }
-            parameters.onClearVariant = { controller.clearVariant() }
+            parameters.onPreset = { preset -> controller.selectPreset(preset) }
             parameters.onUnlock = { controller.unfreezeParameters() }
             parameters.favorites = { app.favorites.value }
-            parameters.onFavoriteToggle = { item ->
-                Telemetry.send(
-                    "Model Favorite Toggled",
-                    mapOf("provider" to item.provider, "modelId" to item.id),
+            parameters.presets = { presetStore.visibleIn(project.name) }
+            parameters.onStarToggle = { item ->
+                // Star creates a preset named after the model with the currently-in-effect
+                // route/effort, labeled with the project's name; unstar removes that label.
+                presetStore.toggleModelStar(
+                    projectName = project.name,
+                    provider = item.provider,
+                    modelId = item.id,
+                    name = ModelText.parts(item).model,
+                    routeTag = controller.routeFor("${item.provider}/${item.id}"),
+                    variant = controller.model.variant,
                 )
-                app.toggleModelFavorite(item.provider, item.id)
+                Telemetry.send(
+                    "Preset Toggled",
+                    mapOf(
+                        "provider" to item.provider,
+                        "modelId" to item.id,
+                        "starred" to "${presetStore.visibleForModel(project.name, item.provider, item.id).isNotEmpty()}",
+                    ),
+                )
             }
+            parameters.onEditFavorites = { /* opens the favorites management window (KILO-9.3) */ }
             parameters.routesEnabled = { provider -> KiloRoutingOptions.getInstance().routesEnabled(provider) }
-            parameters.fetchRoutes = { provider, modelId, done ->
-                cs.launch {
-                    val result = runCatching {
-                        val slugs = routeAuthorSlug(modelId)
-                            ?: throw IllegalArgumentException("model id has no author/slug pair: $modelId")
-                        workspaces.routes(workspace.directory, slugs.first, slugs.second)
-                    }
-                    withContext(Dispatchers.Main) {
-                        if (disposed) return@withContext
-                        done(
-                            result.fold(
-                                onSuccess = { KiloRouteState.Ready(it) },
-                                onFailure = { err -> KiloRouteState.Failed(err.message) },
-                            ),
-                        )
-                    }
-                }
-            }
         }
 
         controller.addListener(this) { event ->

@@ -7,6 +7,7 @@ import ai.kilocode.client.actions.CycleReasoningAction
 import ai.kilocode.client.actions.ResetModelAction
 import ai.kilocode.client.actions.SendPromptAction
 import ai.kilocode.client.actions.StopSessionAction
+import ai.kilocode.client.deluxe.KiloParameterPicker
 import ai.kilocode.client.plugin.KiloBundle
 import ai.kilocode.client.session.SpinnerIcon
 import ai.kilocode.client.session.ui.ReasoningPicker
@@ -20,7 +21,6 @@ import ai.kilocode.client.session.ui.mode.ModePicker
 import ai.kilocode.client.session.ui.model.ModelPicker
 import ai.kilocode.client.session.ui.selection.SessionSelection
 import ai.kilocode.client.ui.HoverIcon
-import ai.kilocode.client.ui.PickerButton
 import ai.kilocode.client.ui.editor.EditorFolds
 import ai.kilocode.client.ui.UiStyle
 import ai.kilocode.client.ui.iconButton
@@ -131,11 +131,13 @@ class PromptPanel(
     private val showEnhance: Boolean = true,
     private val hostedInEditorTab: Boolean = false,
     /**
-     * Deluxe session-header parameter picker (KILO-8.4). When set it takes the model + reasoning
-     * slots in the bar; the legacy pickers stay bound (hidden) so the Ctrl+1/2/3/0 shortcuts keep
-     * cycling through the same controller path. Other embeds (worktree dialog) leave it unset.
+     * Deluxe session-header parameter picker (KILO-8.4, popup superseded by the fork-owned session
+     * popup in KILO-9.2). When set it takes the model + reasoning slots in the bar; the legacy
+     * pickers stay bound (hidden) so the Ctrl+1/3/0 shortcuts keep cycling through the same
+     * controller path and Ctrl+2 cycles the project's favorite presets (ADR-0003). Other embeds
+     * (worktree dialog) leave it unset.
      */
-    private val parameters: PickerButton? = null,
+    override val parameters: KiloParameterPicker? = null,
 ) : BorderLayoutPanel(), SessionEditorStyleTarget, SendPromptContext, PromptSelectors, UiDataProvider {
 
     companion object {

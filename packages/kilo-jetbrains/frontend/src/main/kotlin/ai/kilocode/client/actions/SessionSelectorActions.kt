@@ -72,9 +72,16 @@ class CycleModelAction : SelectorAction(
         const val ID = "Kilo.Session.CycleModel"
     }
 
-    override fun enabled(ctx: PromptSelectors): Boolean = ctx.model.canCycle()
+    // The deluxe session-header control (ADR-0003) owns Ctrl+2 where present: visible favorite
+    // presets first, flat `model.json` favorites as fallback; the hidden upstream picker remains
+    // the fallback cycle elsewhere (worktree dialog).
+    override fun enabled(ctx: PromptSelectors): Boolean = ctx.parameters?.canCycle() ?: ctx.model.canCycle()
 
-    override fun perform(ctx: PromptSelectors) = ctx.model.cycle()
+    override fun perform(ctx: PromptSelectors) {
+        val parameters = ctx.parameters
+        if (parameters != null) return parameters.cycle()
+        ctx.model.cycle()
+    }
 }
 
 class CycleReasoningAction : SelectorAction(

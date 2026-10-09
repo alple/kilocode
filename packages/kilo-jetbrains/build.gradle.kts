@@ -29,8 +29,9 @@ fun checked(value: String): String {
     // identity (see lux below) so they install side-by-side with the published plugin. The optional
     // +<sha> is SemVer build metadata: it never affects release ordering (Release below parses only
     // the part before it) and only ever comes from a local override, never from a release tag, so it
-    // cannot leak into a published version.
-    require(Regex("^[0-9]+\\.[0-9]+\\.[0-9]+(-rc\\.[0-9]+)?(-lux[0-9]+)?(\\+[0-9a-f]+)?$").matches(value)) {
+    // cannot leak into a published version. A static -luxnext suffix is the dev-run label for sandbox
+    // testing (no counter); numbered -lux<N> remains the form for built lux ZIPs.
+    require(Regex("^[0-9]+\\.[0-9]+\\.[0-9]+(-rc\\.[0-9]+)?(-lux[0-9]+|-luxnext)?(\\+[0-9a-f]+)?$").matches(value)) {
         "Invalid JetBrains plugin version: $value"
     }
     return value
@@ -99,7 +100,7 @@ val ver = override?.let(::checked) ?: prop?.let(::checked) ?: if (release) check
 
 // Versions carrying the -lux<N> suffix are local "lux" builds: they publish under a separate plugin
 // id and name so they install side-by-side with the published plugin instead of replacing it.
-val lux = Regex(".*-lux[0-9]+").matches(ver)
+val lux = Regex(".*-lux(?:[0-9]+|next)").matches(ver)
 
 if (release && !pinned) error(
     "kilo.cli.pinned=false is a dev-only mode and cannot be released. Set kilo.cli.pinned=true before a production/publish build."

@@ -109,10 +109,104 @@ class KiloParameterPickerTest : BasePlatformTestCase() {
         assertEquals("The bare id resolves to the canonical item key", "openrouter/z-ai/glm-5.3-flash", p.selectionKeyForTest())
     }
 
-    fun `test favorite keys derive from the favorites callback`() {
+    fun `test starred keys derive from the visible presets`() {
         val p = KiloParameterPicker()
-        p.favorites = { listOf(ModelSelectionDto("openrouter", "z-ai/glm-5.3-flash")) }
+        p.presets = {
+            listOf(
+                KiloFavoritePreset(id = "a", name = "A", labels = listOf("p"), provider = "openrouter", modelId = "z-ai/glm-5.3-flash"),
+                KiloFavoritePreset(id = "b", name = "B", labels = listOf("p"), provider = "openai", modelId = "gpt-5"),
+            )
+        }
 
-        assertEquals(setOf("openrouter/z-ai/glm-5.3-flash"), p.favoriteKeysForTest())
+        assertEquals(setOf("openrouter/z-ai/glm-5.3-flash", "openai/gpt-5"), p.starredKeysForTest())
+    }
+
+    fun `test cycle prefers visible presets in label order`() {
+        val p = KiloParameterPicker()
+        val fast = KiloFavoritePreset(
+            id = "fast", name = "Fast", labels = listOf("p"),
+            provider = "openrouter", modelId = "z-ai/glm-5.3-flash", routeTag = "parasail", variant = "high",
+        )
+        val plain = KiloFavoritePreset(
+            id = "plain", name = "Plain", labels = listOf("p"),
+            provider = "openai", modelId = "gpt-5",
+        )
+        p.presets = { listOf(fast, plain) }
+        p.sync(
+            items = listOf(item("z-ai/glm-5.3-flash"), item("gpt-5")),
+            selected = "openrouter/z-ai/glm-5.3-flash",
+            route = "parasail",
+            variants = listOf("high"),
+            variant = "high",
+            frozen = false,
+        )
+        var picked: KiloFavoritePreset? = null
+        p.onPreset = { picked = it }
+
+        p.cycle()
+
+        assertEquals("The next preset in the pool, not the active one", "Plain", picked?.name)
+        assertEquals(true, p.canCycle())
+    }
+
+    fun `test cycle applies a preset when the session drifted from the trio`() {
+        val p = KiloParameterPicker()
+        val fast = KiloFavoritePreset(
+            id = "fast", name = "Fast", labels = listOf("p"),
+            provider = "openrouter", modelId = "z-ai/glm-5.3-flash", routeTag = "parasail",
+        )
+        p.presets = { listOf(fast) }
+        p.sync(
+            items = listOf(item("z-ai/glm-5.3-flash")),
+            selected = "openrouter/z-ai/glm-5.3-flash",
+            route = null,
+            variants = emptyList(),
+            variant = null,
+            frozen = false,
+        )
+        var picked: KiloFavoritePreset? = null
+        p.onPreset = { picked = it }
+
+        p.cycle()
+
+        assertEquals("A preset matching nothing still cycles once", "Fast", picked?.name)
+    }
+
+    fun `test cycle falls back to flat favorites when the project has no presets`() {
+        val p = KiloParameterPicker()
+        p.favorites = { listOf(ModelSelectionDto("openai", "gpt-5"), ModelSelectionDto("anthropic", "claude")) }
+        p.sync(
+            items = listOf(item("gpt-5"), item("claude", provider = "anthropic")),
+            selected = "openai/gpt-5",
+            route = null,
+            variants = emptyList(),
+            variant = null,
+            frozen = false,
+        )
+        var picked: ModelPicker.Item? = null
+        p.onModel = { picked = it }
+
+        p.cycle()
+
+        assertEquals("anthropic/claude", picked?.key)
+    }
+
+    fun `test a single preset matching the session makes cycle idle`() {
+        val p = KiloParameterPicker()
+        val fast = KiloFavoritePreset(
+            id = "fast", name = "Fast", labels = listOf("p"),
+            provider = "openrouter", modelId = "z-ai/glm-5.3-flash", routeTag = "parasail", variant = "high",
+        )
+        p.presets = { listOf(fast) }
+        p.sync(
+            items = listOf(item("z-ai/glm-5.3-flash")),
+            selected = "openrouter/z-ai/glm-5.3-flash",
+            route = "parasail",
+            variants = listOf("high"),
+            variant = "high",
+            frozen = false,
+        )
+
+        assertFalse(p.canCycle())
     }
 }

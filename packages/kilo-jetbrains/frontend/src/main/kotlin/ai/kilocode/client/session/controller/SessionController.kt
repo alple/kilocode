@@ -4,6 +4,7 @@ import ai.kilocode.client.KiloNotifications
 import ai.kilocode.client.app.KiloAppService
 import ai.kilocode.client.app.KiloSessionService
 import ai.kilocode.client.app.Workspace
+import ai.kilocode.client.deluxe.KiloFavoritePreset
 import ai.kilocode.client.deluxe.KiloProjectParameterStore
 import ai.kilocode.client.plugin.KiloBundle
 import ai.kilocode.client.session.background.BackgroundAgents
@@ -991,6 +992,53 @@ class SessionController(
         if (route == null) store.clearRoute(key) else store.setRoute(key, route)
         fire(SessionControllerEvent.WorkspaceReady)
         capture("Route Selected", sessionProps() + mapOf("model" to key, "route" to (route ?: "auto")))
+    }
+
+    /**
+     * Apply a favorite preset (ADR-0003): model, OpenRouter route and reasoning effort land as one
+     * pick. The model is stored per agent and the route/effort pins per model, mirroring
+     * [selectModel], [selectRoute] and [selectVariant] — a null pin means Auto and clears the
+     * store's remembered value for that model. Refused while the trio is frozen, like every
+     * parameter pick.
+     */
+    fun selectPreset(preset: KiloFavoritePreset) {
+        assertEdt()
+        if (model.parametersFrozen) {
+            LOG.debug { "${ChatLogSummary.sid(sid ?: ref?.key ?: "pending")} kind=config preset-refusal locked=true preset=${preset.name}" }
+            return
+        }
+        LOG.debug { "${ChatLogSummary.sid(sid ?: ref?.key ?: "pending")} kind=config preset=${preset.name} model=${preset.provider}/${preset.modelId}" }
+        val agent = model.agent ?: return
+        val key = "${preset.provider}/${preset.modelId}"
+        if (item(key) == null && model.workspace.providers != null) return
+        modelTime = null
+        prefModel = key
+        prefAgent = agent
+        prefOverride = true
+        val variant = preset.variant
+        val routeTag = preset.routeTag
+        prefVariantKey = key
+        prefVariant = variant
+        prefRouteKey = key
+        prefRoute = routeTag
+        if (variant == null) store.clearVariant(key) else store.setVariant(key, variant)
+        if (routeTag == null) store.clearRoute(key) else store.setRoute(key, routeTag)
+        store.setModel(agent, preset.provider, preset.modelId)
+        fire(SessionControllerEvent.WorkspaceReady) {
+            selectResolvedModel(key)
+            model.modelOverride = model.defaultModel != model.model
+        }
+        capture(
+            "Preset Selected",
+            sessionProps() + mapOf(
+                "preset" to preset.name,
+                "agent" to agent,
+                "provider" to preset.provider,
+                "modelId" to preset.modelId,
+                "route" to (preset.routeTag ?: "auto"),
+                "variant" to (preset.variant ?: "auto"),
+            ),
+        )
     }
 
     /**

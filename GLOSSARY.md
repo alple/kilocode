@@ -31,3 +31,15 @@ _Avoid_: freeze (verb form is fine, "freeze" as noun avoided), pin (reserved for
 **Project store**:
 The per-IntelliJ-project persisted record of the user's last picks — model per agent, reasoning effort and route per (provider, model), plus the remembered mode/agent. The seed a new session inherits from; JetBrains-side and Deluxe-owned.
 _Avoid_: model.json defaults (that file is machine-global), session prefs (in-memory, per session)
+
+**Route preset**:
+A named favorite combining provider, model, route, and reasoning effort with user-assigned labels. Stored once at IDE level; shown in every project whose name matches one of its labels; editing it updates every project it appears in.
+_Avoid_: favorite preset, profile, template
+
+**Label**:
+A user-created tag on a route preset. A label matching an IntelliJ project's name scopes the preset into that project's session popup; unlabeled presets are visible in no project popup.
+_Avoid_: tag (synonym avoided), group, category
+
+**Flat favorite**:
+The legacy `(provider, model)` star pair persisted in `model.json` by the CLI. Still live for the TUI and the upstream JetBrains pickers; the session popup no longer reads it.
+_Avoid_: model favorite, old favorite
