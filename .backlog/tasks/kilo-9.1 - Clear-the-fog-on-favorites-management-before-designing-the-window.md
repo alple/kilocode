@@ -4,6 +4,7 @@ title: Clear the fog on favorites management before designing the window
 status: To Do
 assignee: []
 created_date: '2026-10-09 09:27'
+updated_date: '2026-10-09 09:35'
 labels:
   - 'wayfinder:grilling'
 dependencies: []
@@ -45,3 +46,12 @@ Decisions recorded per question with rationale (resolution comments), indexed in
 - [ ] #3 Every question that stays unresolved after the pass becomes a new child ticket of KILO-9 or is recorded under its Not-yet-specified section
 - [ ] #4 The answers give the design ticket enough to write the ADR and spec without re-litigating them
 <!-- AC:END -->
+
+## Comments
+
+<!-- COMMENTS:BEGIN -->
+created: 2026-10-09 09:35
+---
+Merged into [KILO-9.2](KILO-9.2) — the design ticket now settles the fog questions as part of designing; no separate fog-clearing pass. This ticket is archived as superseded.
+---
+<!-- COMMENTS:END -->
