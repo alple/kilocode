@@ -37,3 +37,12 @@ Implements the management-window half of the ADR-0003 spec (see epic KILO-9 for 
 
 - Window state tests (isModified/apply/cancel write-through to the preset store); drag semantics tests (add-label-at-position, per-label reorder, auto-expand); per-label ordering reflected in visibility resolution; gate empty-state tests; price-delta computation tests (cheaper/pricier/neutral); route sort/filter tests; `./gradlew typecheck` + `./gradlew test` from `packages/kilo-jetbrains/`.
 <!-- SECTION:DESCRIPTION:END -->
+
+## Comments
+
+<!-- COMMENTS:BEGIN -->
+created: 2026-10-09 15:09
+---
+**Implementation summary (KILO-9.3 → Testing)** — merged upstream `main` first (556 commits, one conflict resolved in `packages/kilo-jetbrains/gradle.properties`), then implemented on top in the fork-owned `deluxe` package. Zero shared-opencode or provider-DTO edits; the only KILO-9.2 file touched is `KiloFavoritePresetStore` (+`edit()` for renames/field updates, matching the existing API style) and the sanctioned one-line `SessionUi` placeholder wiring for `onEditFavorites` (KILO-9.2's spec sanctioned this exact call site for the popup Favorites-line button entry point). All new code lives in `ai.kilocode.client.deluxe` + one action class + bundle keys + one XML action registration + a changeset (`jetbrains-favorites-management-window.md`).
+---
+<!-- COMMENTS:END -->
