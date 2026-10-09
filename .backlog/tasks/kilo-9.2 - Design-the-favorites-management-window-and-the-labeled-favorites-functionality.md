@@ -4,7 +4,7 @@ title: Design the favorites management window and the labeled-favorites function
 status: To Do
 assignee: []
 created_date: '2026-10-09 09:27'
-updated_date: '2026-10-09 09:35'
+updated_date: '2026-10-09 09:45'
 labels:
   - 'wayfinder:grilling'
 dependencies: []
@@ -59,3 +59,12 @@ ADR + spec covering the management window and the labeled-favorites functionalit
 - [ ] #6 Any question still unresolved after the design pass becomes a new child ticket of KILO-9 or is recorded under the map's Not-yet-specified section
 - [ ] #7 Build tickets are seeded from the spec as children of KILO-9 with dependency edges, or the follow-up that seeds them is recorded on the map
 <!-- AC:END -->
+
+## Comments
+
+<!-- COMMENTS:BEGIN -->
+created: 2026-10-09 09:45
+---
+Merged from the fog-clearing ticket that originally carried the KILO-9.1 id (archived, then removed when this ticket reclaimed the id at the developer's direction). Its six fog questions live verbatim in this ticket's "Decisions to settle while designing" section; the design work settles them — no separate fog pass. Numbering history: fog ticket was created as KILO-9.1, this ticket as KILO-9.2; after the merge this ticket is KILO-9.1 and the next child of KILO-9 takes the next number.
+---
+<!-- COMMENTS:END -->
