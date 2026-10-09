@@ -1,10 +1,11 @@
 ---
 id: KILO-9.1
 title: Design the favorites management window and the labeled-favorites functionality
-status: To Do
-assignee: []
+status: In Progress
+assignee:
+  - dev1
 created_date: '2026-10-09 09:27'
-updated_date: '2026-10-09 09:45'
+updated_date: '2026-10-09 11:15'
 labels:
   - 'wayfinder:grilling'
 dependencies: []
@@ -59,6 +60,12 @@ ADR + spec covering the management window and the labeled-favorites functionalit
 - [ ] #6 Any question still unresolved after the design pass becomes a new child ticket of KILO-9 or is recorded under the map's Not-yet-specified section
 - [ ] #7 Build tickets are seeded from the spec as children of KILO-9 with dependency edges, or the follow-up that seeds them is recorded on the map
 <!-- AC:END -->
+
+## Implementation Notes
+
+<!-- SECTION:NOTES:BEGIN -->
+"Grilling session started 2026-10-09. Design inputs from user: popup keeps models + sidecar details pane; edit-favorites button on Favorites top line opens a new non-modal window modeled on IntelliJ's Data Sources and Drivers dialog; window is OpenRouter-compatible-API-only; favorites = global named presets (name + labels + provider/model/route/effort params); project name is a label that scopes the preset into that project's popup; details pane shows pricing and RPG-style green/red price comparison vs the current model."
+<!-- SECTION:NOTES:END -->
 
 ## Comments
 
