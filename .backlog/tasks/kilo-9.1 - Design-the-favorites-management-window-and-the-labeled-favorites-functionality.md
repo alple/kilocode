@@ -1,11 +1,11 @@
 ---
 id: KILO-9.1
 title: Design the favorites management window and the labeled-favorites functionality
-status: In Progress
+status: Testing
 assignee:
   - dev1
 created_date: '2026-10-09 09:27'
-updated_date: '2026-10-09 11:15'
+updated_date: '2026-10-09 12:31'
 labels:
   - 'wayfinder:grilling'
 dependencies: []
@@ -52,13 +52,13 @@ ADR + spec covering the management window and the labeled-favorites functionalit
 
 ## Acceptance Criteria
 <!-- AC:BEGIN -->
-- [ ] #1 Each fog question (popup surface, favorite data model, labels storage and scoping, label-driven filtering, route/effort selection aid, window shape) has a written decision with rationale and rejected alternatives recorded in the ADR or a resolution comment
-- [ ] #2 An ADR in docs/adr/ records the decided design: favorites data model (named model+route+effort presets with labels), storage location, the management window shape and entry point, and the popup surface that displays labeled favorites
-- [ ] #3 A spec (epic description update or Backlog document) details the functionality enough to seed build tickets: composing a preset from model, route and effort with route data in view; naming; assigning and managing labels; how the session picker filters favorites by labels; and what happens to the existing flat favorites
-- [ ] #4 The diagnosed parameter-picker popup defects (route section below the fold, missing loading state on first open, scroll reset when the route fetch completes) are each addressed by the design or explicitly ruled in or out with rationale
-- [ ] #5 The design follows ADR-0001 conventions: Deluxe-owned surfaces in the fork-marked package, minimal upstream edits, no new shared provider-state DTO fields, Swing + platform components only
-- [ ] #6 Any question still unresolved after the design pass becomes a new child ticket of KILO-9 or is recorded under the map's Not-yet-specified section
-- [ ] #7 Build tickets are seeded from the spec as children of KILO-9 with dependency edges, or the follow-up that seeds them is recorded on the map
+- [x] #1 Each fog question (popup surface, favorite data model, labels storage and scoping, label-driven filtering, route/effort selection aid, window shape) has a written decision with rationale and rejected alternatives recorded in the ADR or a resolution comment
+- [x] #2 An ADR in docs/adr/ records the decided design: favorites data model (named model+route+effort presets with labels), storage location, the management window shape and entry point, and the popup surface that displays labeled favorites
+- [x] #3 A spec (epic description update or Backlog document) details the functionality enough to seed build tickets: composing a preset from model, route and effort with route data in view; naming; assigning and managing labels; how the session picker filters favorites by labels; and what happens to the existing flat favorites
+- [x] #4 The diagnosed parameter-picker popup defects (route section below the fold, missing loading state on first open, scroll reset when the route fetch completes) are each addressed by the design or explicitly ruled in or out with rationale
+- [x] #5 The design follows ADR-0001 conventions: Deluxe-owned surfaces in the fork-marked package, minimal upstream edits, no new shared provider-state DTO fields, Swing + platform components only
+- [x] #6 Any question still unresolved after the design pass becomes a new child ticket of KILO-9 or is recorded under the map's Not-yet-specified section
+- [x] #7 Build tickets are seeded from the spec as children of KILO-9 with dependency edges, or the follow-up that seeds them is recorded on the map
 <!-- AC:END -->
 
 ## Implementation Notes
@@ -75,3 +75,9 @@ created: 2026-10-09 09:45
 Merged from the fog-clearing ticket that originally carried the KILO-9.1 id (archived, then removed when this ticket reclaimed the id at the developer's direction). Its six fog questions live verbatim in this ticket's "Decisions to settle while designing" section; the design work settles them — no separate fog pass. Numbering history: fog ticket was created as KILO-9.1, this ticket as KILO-9.2; after the merge this ticket is KILO-9.1 and the next child of KILO-9 takes the next number.
 ---
 <!-- COMMENTS:END -->
+
+## Final Summary
+
+<!-- SECTION:FINAL_SUMMARY:BEGIN -->
+Design settled through grilling (6 + 5 + 2 + 1 question rounds) and recorded. Decisions: favorites = named route presets {id, unique name, labels[], provider, model, route (null=Auto), effort (null=Auto)} in an IDE-global app-level PersistentStateComponent (config-dir storage, default roaming — survives IntelliJ version updates); CLI/model.json untouched. Labels: free-form tags, unlabeled = visible in no project popup, a label matching the project name (case-insensitive) scopes a preset into that project's session popup. Session popup = Deluxe-owned clone of the upstream popup chain (PickerPopup/PickerListRenderer/ModelDetailsPanel) into ai.kilocode.client.deluxe: Favorites presets section on top (edit-favorites button on the section line, always-visible header + empty state), full catalog below, hover sidecar; route/effort sections and popup route fetching removed — the three diagnosed parameter-picker defects die with the sections (ruled per AC #4). Lock preserved: Unlock row while frozen, preset picks apply model+route+effort as one through the project store. Star = per-model label toggle (star creates a preset with current route/effort + project label; unstar removes the project label). Flat favorites untouched (TUI + upstream pickers); Ctrl+2 cycles visible presets with flat fallback. Management window = non-modal DialogWrapper modeled on Data Sources and Drivers (OK/Cancel/Apply, never blocking), singleton: label accordion with drag (row→group adds label at drop position, in-group drag reorders that label's sequence, collapsed groups auto-expand under drag), per-label ordering drives that project's popup order, alphabetical-order button, +/−/duplicate (duplicate = only independent fork), free-text filter; editor gated to routing-enabled providers ('enable model routing' list; off ⇒ explanatory empty state); route list from CLI /kilo/routes proxy with price/uptime sort/filter and cheapest highlight; details block with per-1M prices + RPG-style green/red delta vs the preset selected in the window list (blended-average headline). Artifacts: docs/adr/0003-favorites-as-labeled-route-presets.md; spec appended to epic KILO-9; GLOSSARY.md gained Route preset / Label / Flat favorite; build tickets KILO-9.2 (store + popup) and KILO-9.3 (window, depends on KILO-9.2) seeded as children. Fog moved to map Not-yet-specified: label rename/delete UI, open-popup live-refresh during window edits, multi-project single-window behavior, preset schema migrations. Explicit note: first cut — modification tickets expected after field testing.
+<!-- SECTION:FINAL_SUMMARY:END -->
