@@ -1,5 +1,5 @@
 ---
-id: KILO-9.2
+id: KILO-9.1
 title: Design the favorites management window and the labeled-favorites functionality
 status: To Do
 assignee: []
