@@ -1,9 +1,11 @@
 ---
 id: KILO-9.2
 title: 'JetBrains: favorite preset store + labeled session popup'
-status: To Do
-assignee: []
+status: In Progress
+assignee:
+  - dev1
 created_date: '2026-10-09 12:29'
+updated_date: '2026-10-09 12:39'
 labels: []
 dependencies: []
 parent_task_id: KILO-9
