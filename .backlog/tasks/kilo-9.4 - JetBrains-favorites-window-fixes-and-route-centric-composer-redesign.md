@@ -1,9 +1,10 @@
 ---
 id: KILO-9.4
 title: 'JetBrains: favorites window fixes and route-centric composer redesign'
-status: To Do
+status: In Progress
 assignee: []
 created_date: '2026-10-10 07:55'
+updated_date: '2026-10-10 08:13'
 labels:
   - ui
 milestone: 'JetBrains: favorites management'
