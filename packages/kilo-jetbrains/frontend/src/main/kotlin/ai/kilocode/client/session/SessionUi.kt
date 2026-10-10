@@ -8,6 +8,7 @@ import ai.kilocode.client.app.KiloSessionService
 import ai.kilocode.client.app.KiloWorkspaceService
 import ai.kilocode.client.app.Workspace
 import ai.kilocode.client.deluxe.KiloFavoritePresetStore
+import ai.kilocode.client.deluxe.KiloFavoritesDialog
 import ai.kilocode.client.deluxe.KiloParameterPicker
 import ai.kilocode.client.deluxe.KiloProjectParameterStore
 import ai.kilocode.client.deluxe.KiloRoutingOptions
@@ -793,7 +794,9 @@ class SessionUi(
                     ),
                 )
             }
-            parameters.onEditFavorites = { /* opens the favorites management window (KILO-9.3) */ }
+            parameters.onEditFavorites = {
+                KiloFavoritesDialog.show(project, workspace.directory)
+            }
             parameters.routesEnabled = { provider -> KiloRoutingOptions.getInstance().routesEnabled(provider) }
         }
 

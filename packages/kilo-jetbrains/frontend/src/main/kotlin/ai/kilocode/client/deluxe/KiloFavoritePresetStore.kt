@@ -120,6 +120,34 @@ class KiloFavoritePresetStore : PersistentStateComponent<KiloFavoritePresetStore
     }
 
     /**
+     * Replaces a preset's editable fields except its labels ([setLabels] owns those). The name is
+     * made unique against the other presets, auto-suffixing on conflict. Returns the updated
+     * preset, or null when [id] is unknown or [provider]/[modelId] are blank.
+     */
+    fun edit(id: String, name: String, provider: String, modelId: String, routeTag: String?, variant: String?): KiloFavoritePreset? {
+        val preset = get(id) ?: return null
+        val owner = provider.trim()
+        val model = modelId.trim()
+        if (owner.isEmpty() || model.isEmpty()) return null
+        val taken = { candidate: String -> state.presets.any { it.id != id && it.name.equals(candidate, ignoreCase = true) } }
+        var unique = name.trim().ifEmpty { preset.name }
+        if (taken(unique)) {
+            var index = 2
+            while (taken("$unique $index")) index++
+            unique = "$unique $index"
+        }
+        val cleaned = preset.copy(
+            name = unique,
+            provider = owner,
+            modelId = model,
+            routeTag = routeTag?.trim()?.takeIf { it.isNotEmpty() },
+            variant = variant?.trim()?.takeIf { it.isNotEmpty() },
+        )
+        state = State(state.presets.map { if (it.id == id) cleaned else it }, state.order)
+        return cleaned
+    }
+
+    /**
      * Replaces a preset's labels: the preset leaves the order entries of labels it no longer
      * carries and joins each new label's order at the end.
      */

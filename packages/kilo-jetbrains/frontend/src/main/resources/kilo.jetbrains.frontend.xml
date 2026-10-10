@@ -488,6 +488,9 @@
         <action id="Kilo.Session.Board"
                 class="ai.kilocode.client.actions.ShowSessionBoardAction"/>
 
+        <action id="Kilo.EditFavorites"
+                class="ai.kilocode.client.actions.EditFavoritesAction"/>
+
         <action id="Kilo.Session.CompareToBase"
                 class="ai.kilocode.client.actions.CompareToBaseAction"/>
 
