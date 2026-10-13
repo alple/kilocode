@@ -3,10 +3,11 @@ id: KILO-10
 title: >-
   Sync Deluxe edition with Kilo upstream main (CLI v7.8.9, JetBrains
   v7.1.10-rc.2)
-status: To Do
+status: In Progress
 assignee:
   - dev1
 created_date: '2026-10-13 09:22'
+updated_date: '2026-10-13 09:22'
 labels: []
 dependencies: []
 references:
@@ -38,3 +39,13 @@ Recorded decision (user, 2026-10-13): restore the pickup window as in the origin
 - [ ] #7 Nothing is pushed; the merge commit lands on my-features only
 - [ ] #8 Ticket moved to Testing with a final summary listing conflict resolutions and verification results
 <!-- AC:END -->
+
+## Implementation Plan
+
+<!-- SECTION:PLAN:BEGIN -->
+1. Preview conflicts with `git merge-tree`, then `git merge upstream/main` on `my-features` (no push).
+2. Conflict policy (user-approved 2026-10-13): shared picker-area files where Deluxe holds small marked edits — `PromptPanel.kt` (parameters ctor/binding swap), `SessionUi.kt` (parameters wiring) — resolve to the upstream side so the session header shows the original model+reasoning pickers (new ModelPopup flow); the Deluxe parameter picker becomes dormant. Fork-owned files (`ai/kilocode/client/deluxe/*`, KiloFavorites*, tests) carry over unchanged; XML registrations and KiloBundle.properties merge both sides; SessionModel/SessionController freeze guards stay (controller-level, harmless while the picker is unbound, keeps ParameterFreezeTest green).
+3. Fix fallout: the fork-added PromptPanel binding-swap test gets adapted/removed; fork-owned files using upstream picker internals (PickerPopup churn) get minimal fixes to compile.
+4. Verify: CLI `bun run typecheck` + `bun test` from packages/opencode; JetBrains `./gradlew typecheck` + `./gradlew test` from packages/kilo-jetbrains; `bun run script/check-opencode-annotations.ts --worktree`.
+5. Finalize the merge commit on my-features, record resolutions in notes, move ticket to Testing with finalSummary. Never auto-Done.
+<!-- SECTION:PLAN:END -->
