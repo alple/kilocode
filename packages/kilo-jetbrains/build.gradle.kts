@@ -102,7 +102,9 @@ val ver = override?.let(::checked) ?: prop?.let(::checked) ?: if (release) check
 // id and name so they install side-by-side with the published plugin instead of replacing it.
 val lux = Regex(".*-lux(?:[0-9]+|next)").matches(ver)
 
-if (release && !pinned) error(
+// Lux builds are local-only side-by-side installs, so they may bundle the repo CLI even with
+// kilo.cli.pinned=false; real production/publish builds still require the pin.
+if (release && !pinned && !lux) error(
     "kilo.cli.pinned=false is a dev-only mode and cannot be released. Set kilo.cli.pinned=true before a production/publish build."
 )
 
