@@ -10,6 +10,17 @@ const pkg = `${jb}/package.json`
 const zip = `${jb}/backend/build/generated/kilo-cli-res/kilo-cli.zip`
 const hint = `${jb}/.gradle/kilo-cli-pin.properties`
 
+// Machine-local init scripts may relocate Gradle buildDir (e.g. eCryptfs homes redirect it
+// to /tmp, see build-version.sh's zipfile()), so accept the staged zip in both locations.
+const zipPaths = [zip, "/tmp/kilo/jetbrains-build/backend/generated/kilo-cli-res/kilo-cli.zip"]
+
+async function stagedZip() {
+  for (const path of zipPaths) {
+    if (await Bun.file(path).exists()) return path
+  }
+  return undefined
+}
+
 const arg = Bun.argv[2]
 const cmd = arg && !arg.startsWith("-") ? arg : undefined
 const { values } = parseArgs({
@@ -93,7 +104,7 @@ if (cmd === "pin") {
   await $`./gradlew :backend:buildRepoCli --no-configuration-cache`.cwd(jb)
   // stageRepoCli has upToDateWhen{false}; force it so the staged zip matches this build.
   await $`./gradlew :backend:stageRepoCli --no-configuration-cache`.cwd(jb)
-  if (!(await Bun.file(zip).exists())) throw new Error(`Expected staged CLI at ${zip} after unpin`)
+  if (!(await stagedZip())) throw new Error(`Expected staged CLI at ${zipPaths.join(" or ")} after unpin`)
   if (!values["no-verify"]) {
     await $`./gradlew typecheck --no-configuration-cache`.cwd(jb)
   }
@@ -104,7 +115,7 @@ if (cmd === "pin") {
   await $`rm -rf packages/opencode/dist`
   await $`./gradlew :backend:buildRepoCli --no-configuration-cache`.cwd(jb)
   await $`./gradlew :backend:stageRepoCli --no-configuration-cache`.cwd(jb)
-  if (!(await Bun.file(zip).exists())) throw new Error(`Expected staged CLI at ${zip} after regen`)
+  if (!(await stagedZip())) throw new Error(`Expected staged CLI at ${zipPaths.join(" or ")} after regen`)
   await report()
 } else if (cmd === "clean") {
   await clean()
