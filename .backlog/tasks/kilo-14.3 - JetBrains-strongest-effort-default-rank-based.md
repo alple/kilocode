@@ -7,7 +7,8 @@ assignee:
 created_date: '2026-10-13 18:57'
 updated_date: '2026-10-13 18:57'
 labels: []
-dependencies: []
+dependencies:
+  - KILO-14.2
 parent_task_id: KILO-14
 priority: medium
 ordinal: 40000
