@@ -43,3 +43,7 @@ _Avoid_: tag (synonym avoided), group, category
 **Flat favorite**:
 The legacy `(provider, model)` star pair persisted in `model.json` by the CLI. Still live for the TUI and the upstream JetBrains pickers; the session popup no longer reads it.
 _Avoid_: model favorite, old favorite
+
+**Provider clone**:
+A user-created second instance of one catalog provider (OpenRouter only), with its own id, display name, and API key, sharing the source's full model catalog (modalities, costs, limits). Created from the Settings providers dialog; stored as a config entry whose expansion into a catalog provider happens in the CLI.
+_Avoid_: duplicate provider (reads like a bug), custom provider (that's the hand-declared-models flow that loses metadata), second key (describes the credential, not the provider)
