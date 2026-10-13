@@ -1,11 +1,11 @@
 ---
 id: KILO-11
 title: Hide Kilo Gateway models from picker Recommended section when not logged in
-status: In Progress
+status: Testing
 assignee:
   - dev1
 created_date: '2026-10-13 11:09'
-updated_date: '2026-10-13 11:10'
+updated_date: '2026-10-13 11:14'
 labels: []
 dependencies: []
 priority: medium
@@ -29,3 +29,11 @@ Fix plan (single point, Kilo-owned file): in packages/opencode/src/provider/mode
 - [ ] #4 JetBrains picker Recommended section no longer lists gateway models when logged out (downstream effect; no JetBrains change needed)
 - [ ] #5 bun run typecheck passes from packages/opencode and the new test passes
 <!-- AC:END -->
+
+## Final Summary
+
+<!-- SECTION:FINAL_SUMMARY:BEGIN -->
+Fixed in packages/opencode/src/provider/models.ts (Kilo-owned file). Extracted the kilo catalog assembly into an exported pure function kiloModels({ creds, valid, org, fetched, fallback }) that (1) preserves the existing selection logic (invalid → no models; org-scoped → fetched even when empty; else fallback when fetch is empty) and (2) strips recommendedIndex from every model when creds is undefined. creds = token(opts, info), which already covers KILO_API_KEY env, auth-store oauth/api entries, and config apiKey — no new service dependency. get() now hoists the token() call into creds and calls kiloModels; logged-in behavior is byte-identical.
+
+Verification: new test/kilocode/provider/models-catalog.test.ts (8 tests: logged-out strips ranking but keeps other fields; logged-in keeps ranking incl. fallback path; unranked models pass through by reference; org-pins-fetched and invalid-token behaviors preserved; empty catalog). All 8 pass; full test/kilocode/provider suite 81/81 pass; bun run typecheck green. Downstream surfaces (JetBrains ModelPickerRows Recommended section, VS Code webview, agent-manager ordering) inherit the fix — no JetBrains change needed. Not yet committed (previous commit cycle was user-directed; awaiting go-ahead). Ticket → Testing.
+<!-- SECTION:FINAL_SUMMARY:END -->
