@@ -80,3 +80,4 @@ packages/opencode/.artifacts/
 .backlog
 .backlog/*
 kilo.jetbrains-*.zip
+/.kilo/plans/*
