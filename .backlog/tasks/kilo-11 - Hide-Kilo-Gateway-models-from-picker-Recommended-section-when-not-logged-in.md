@@ -1,9 +1,11 @@
 ---
 id: KILO-11
 title: Hide Kilo Gateway models from picker Recommended section when not logged in
-status: To Do
-assignee: []
+status: In Progress
+assignee:
+  - dev1
 created_date: '2026-10-13 11:09'
+updated_date: '2026-10-13 11:10'
 labels: []
 dependencies: []
 priority: medium
