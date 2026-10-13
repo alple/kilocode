@@ -8,10 +8,11 @@ Usage: $0 [lux-number] [base-version]
 Builds a local "lux" JetBrains plugin (unsigned, unverified) and records the build as a
 git tag jetbrains-lux/v<base>-lux<lux-number>, pushed to origin.
 
-The lux number is resolved from the existing jetbrains-lux/v* tags on origin, so builds
-track across machines and clones. Lux builds install side-by-side with published releases
-under a separate plugin id (ai.kilocode.jetbrains.lux / "Kilo Code (lux)") and never touch
-the jetbrains/v* release tags that the release workflow owns.
+The lux number defaults to the kilo.lux.version counter in gradle.properties — a global
+counter across bases that build-version.sh increments after every successful build — and
+the base defaults to kilo.jetbrains.version. Lux builds install side-by-side with published
+releases under a separate plugin id (ai.kilocode.jetbrains.lux / "Kilo Code (lux)") and
+never touch the jetbrains/v* release tags that the release workflow owns.
 
 Lux builds always bundle the repo-built CLI (kilo.cli.pinned=false): the plugin ships a
 CLI compiled from this worktree, and the plugin forces the shared official Kilo Code
@@ -21,12 +22,12 @@ skill's unpin flow first so the staged CLI is fresh:
 bun .kilo/skills/jetbrains-cli-pin/script/cli-pin.ts unpin
 
 Arguments:
-  lux-number    Optional explicit lux counter (default: highest existing + 1, first is 1).
-  base-version  Optional stable base version x.y.z (default: latest stable jetbrains/v* tag on origin).
+  lux-number    Optional explicit lux counter (default: kilo.lux.version in gradle.properties).
+  base-version  Optional stable base version x.y.z (default: kilo.jetbrains.version in gradle.properties).
 
 Examples:
-  $0                       # next lux build on the latest stable release
-  $0 2 7.1.8               # rebuild a specific counter on a specific stable base
+  $0                       # next lux build on the current development base
+  $0 7 7.1.9               # explicit counter on an explicit stable base
 EOF
 }
 
@@ -39,17 +40,33 @@ script="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 plugin="$(cd "${script}/.." && pwd)"
 cd "$plugin"
 
+props="$plugin/gradle.properties"
+
+if [[ $# -ge 1 ]]; then
+  if [[ ! "$1" =~ ^[0-9]+$ ]]; then
+    echo "Lux number must be a plain integer, got '$1'." >&2
+    exit 1
+  fi
+  next="$1"
+else
+  # The lux counter is global across bases: build-version.sh stamps -lux<N> from it and
+  # increments it after every successful build, so it — not the origin tags — decides the
+  # next number. The final tag-existence check below still guards against collisions.
+  next="$(sed -nE 's/^kilo\.lux\.version=([0-9]+)$/\1/p' "$props" | tail -1)"
+  if [[ -z "$next" ]]; then
+    echo "No kilo.lux.version=<n> in $props; add it or pass an explicit lux number." >&2
+    exit 1
+  fi
+fi
+
 if [[ $# -ge 2 ]]; then
   base="${2#v}"
 else
-  # Lux builds track the latest stable jetbrains/v* release on origin, never an RC or the
-  # local dev version. Stable means a plain x.y.z tag (no -rc.n prerelease).
-  base="$(git ls-remote --tags origin 'refs/tags/jetbrains/v*' \
-    | sed 's|.*refs/tags/jetbrains/v||; s|\^.*$||' \
-    | grep -E '^[0-9]+\.[0-9]+\.[0-9]+$' \
-    | sort -uV | tail -1)"
+  # The base defaults to the version currently under development. Stable x.y.z only:
+  # build-version.sh's checked() gate and the -lux suffix form expect a plain base.
+  base="$(sed -nE 's/^kilo\.jetbrains\.version=([0-9]+\.[0-9]+\.[0-9]+)$/\1/p' "$props" | tail -1)"
   if [[ -z "$base" ]]; then
-    echo "No stable jetbrains/v* tags found on origin; pass an explicit stable base version." >&2
+    echo "No stable kilo.jetbrains.version=x.y.z in $props (rc or suffixed values are not eligible); pass an explicit stable base version." >&2
     exit 1
   fi
 fi
@@ -59,33 +76,12 @@ if [[ ! "$base" =~ ^[0-9]+\.[0-9]+\.[0-9]+$ ]]; then
   exit 1
 fi
 
-prefix="refs/tags/jetbrains-lux/v${base}-lux"
-remote="$(git ls-remote --tags origin "${prefix}*")"
-if [[ -z "$remote" && $# -eq 0 ]]; then
-  next=1
-else
-  highest=0
-  while read -r sha ref; do
-    n="${ref#"$prefix"}"
-    [[ "$n" =~ ^[0-9]+$ ]] || continue
-    (( n > highest )) && highest="$n"
-  done <<<"$remote"
-  next=$(( highest + 1 ))
-fi
-
-if [[ $# -ge 1 ]]; then
-  if [[ ! "$1" =~ ^[0-9]+$ ]]; then
-    echo "Lux number must be a plain integer, got '$1'." >&2
-    exit 1
-  fi
-  next="$1"
-fi
-
 version="${base}-lux${next}"
 tag="jetbrains-lux/v${version}"
 
 if git ls-remote --exit-code --tags origin "$tag" >/dev/null 2>&1; then
   echo "Tag $tag already exists on origin; refusing to overwrite it." >&2
+  echo "If the kilo.lux.version counter in gradle.properties is stale, bump it to the next free number." >&2
   exit 1
 fi
 
