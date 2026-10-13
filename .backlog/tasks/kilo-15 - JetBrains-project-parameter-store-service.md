@@ -1,11 +1,16 @@
 ---
 id: KILO-15
 title: 'JetBrains: project parameter store service'
-status: Backlog
-assignee: []
+status: To Do
+assignee:
+  - dev1
 created_date: '2026-10-13 18:56'
+updated_date: '2026-10-13 18:56'
 labels: []
 dependencies: []
+references:
+  - kilo-14
+priority: high
 ordinal: 38000
 ---
 
