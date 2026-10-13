@@ -36,6 +36,29 @@ function baseURL(url: string | undefined, org: string | undefined) {
   return `${base}/api/openrouter`
 }
 
+/**
+ * Assembles the kilo provider's model record: the fetched cloud catalog when usable, else the
+ * bundled fallback. Logged-out sessions still see the catalog (the provider autoloads with an
+ * anonymous key), but its preferredIndex ranking would fill every picker's Recommended section
+ * with models the user cannot call — strip the ranking unless the user has kilo credentials.
+ */
+export function kiloModels(input: {
+  creds: string | undefined
+  valid: boolean
+  org: string | undefined
+  fetched: Record<string, Model>
+  fallback: Record<string, Model> | undefined
+}): Record<string, Model> {
+  const raw = !input.valid || input.org || Object.keys(input.fetched).length > 0 ? input.fetched : (input.fallback ?? {})
+  if (input.creds !== undefined) return raw
+  return Object.fromEntries(
+    Object.entries(raw).map(([id, model]) => [
+      id,
+      model.recommendedIndex === undefined ? model : { ...model, recommendedIndex: undefined },
+    ]),
+  )
+}
+
 export const layer: Layer.Layer<Service, never, Core.Service | Config.Service | Auth.Service | ModelCache.Service> =
   Layer.effect(
     Service,
@@ -80,15 +103,16 @@ export const layer: Layer.Layer<Service, never, Core.Service | Config.Service | 
 
         const opts = cfg.provider?.kilo?.options
         const info = yield* auth.get("kilo").pipe(Effect.catch(() => Effect.succeed(undefined)))
+        const creds = token(opts, info)
         const org = organization(opts, info)
         const url = baseURL(opts?.baseURL, org)
         const fetch = {
           ...(url ? { baseURL: url } : {}),
           ...(org ? { kilocodeOrganizationId: org } : {}),
         }
-        const valid = compatible({ ...fetch, kilocodeToken: token(opts, info) })
+        const valid = compatible({ ...fetch, kilocodeToken: creds })
         const fetched = valid ? yield* cache.fetch("kilo", fetch).pipe(Effect.catch(() => Effect.succeed({}))) : {}
-        const models = !valid || org || Object.keys(fetched).length > 0 ? fetched : (fallback?.models ?? {})
+        const models = kiloModels({ creds, valid, org, fetched, fallback: fallback?.models })
         providers.kilo = {
           id: "kilo",
           name: "Kilo Gateway",
