@@ -3,9 +3,11 @@ id: KILO-12
 title: >-
   Provider clone: create second OpenRouter instances (work/private) from
   Settings with full catalog
-status: To Do
-assignee: []
+status: In Progress
+assignee:
+  - dev1
 created_date: '2026-10-13 13:15'
+updated_date: '2026-10-13 13:18'
 labels: []
 dependencies: []
 type: enhancement
