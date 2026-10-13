@@ -63,3 +63,12 @@ Each sub-ticket reiterates its slice of the decided design and lists its known g
 - [ ] #4 model.json is neither written nor read for model/effort selection by the plugin
 - [ ] #5 Two projects side by side: a change in one does not affect the other
 <!-- AC:END -->
+
+## Comments
+
+<!-- COMMENTS:BEGIN -->
+created: 2026-10-13 18:57
+---
+Route-map ticket ids: step 1 = kilo-14.1 (project parameter store service, **Next**), step 2 = kilo-14.2 (wire the selection chain to the project store; drop model.json tiers, blocked by 1), step 3 = kilo-14.3 (strongest-effort default, blocked by 2). Dependencies are wired natively (14.2 depends on 14.1; 14.3 depends on 14.2).
+---
+<!-- COMMENTS:END -->
