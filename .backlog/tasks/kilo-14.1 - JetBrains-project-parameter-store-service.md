@@ -5,11 +5,12 @@ status: To Do
 assignee:
   - dev1
 created_date: '2026-10-13 18:56'
-updated_date: '2026-10-13 18:56'
+updated_date: '2026-10-13 19:06'
 labels: []
 dependencies: []
 parent_task_id: KILO-14
 priority: high
+type: enhancement
 ordinal: 38000
 ---
 
@@ -42,8 +43,9 @@ First slice of KILO-14 (the route map's step 1): the per-project persistent stor
 
 ## Acceptance Criteria
 <!-- AC:BEGIN -->
-- [ ] #1 Store service round-trips state via getState/loadState in a plain JUnit test
-- [ ] #2 Maps are copy-on-write and never hold null values
-- [ ] #3 State lands in workspace.xml (RoamingType.DISABLED), no plugin.xml registration needed
-- [ ] #4 gradlew typecheck and frontend tests pass
+- [ ] #1 Store service round-trips state via getState/loadState in a plain JUnit test; maps copy-on-write, null-free; workspace.xml (RoamingType.DISABLED)
+- [ ] #2 Resolution chain reads: session pin → project store → per-agent config → global config → fallback; no model.json tier
+- [ ] #3 selectModel/selectVariant (composer/pending state) and the New Worktree dialog write the project store, not model.json; the model.json write path is deleted
+- [ ] #4 Opened sessions with a resolved selection are never re-resolved by background events; blank/unresolved sessions complete bootstrap exactly once
+- [ ] #5 Remembered agent moves from KiloPluginSettings (IDE-global) to the project store; gradlew typecheck + tests green
 <!-- AC:END -->
