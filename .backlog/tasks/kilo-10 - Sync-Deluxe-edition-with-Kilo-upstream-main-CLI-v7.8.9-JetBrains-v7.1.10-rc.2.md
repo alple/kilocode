@@ -7,7 +7,7 @@ status: Testing
 assignee:
   - dev1
 created_date: '2026-10-13 09:22'
-updated_date: '2026-10-13 10:46'
+updated_date: '2026-10-13 10:54'
 labels: []
 dependencies: []
 references:
@@ -49,6 +49,15 @@ User directive (2026-10-13, superseding the original merge plan): the Deluxe mer
 7. Verify: bash -n both scripts; gradle.properties version state; JB gradlew typecheck.
 8. Move ticket to Testing with summary; user reviews the staged state and commits (or asks me to).
 <!-- SECTION:PLAN:END -->
+
+## Comments
+
+<!-- COMMENTS:BEGIN -->
+created: 2026-10-13 10:54
+---
+Committed and pushed per user request (2026-10-13): commit 77cac6ce01 'chore: reset deluxe branch to Kilo 7.1.9/7.8.8 stable, restore lux tooling' on my-features (tag 08981b3a30 + restored tooling/docs/glossary, 100 files). Pushed with --force-with-lease (remote head was older at 2fb61b2a34). Also pushed archive/deluxe-my-features to origin so the prior Deluxe history is durable on the remote. Excluded from the commit per repo hygiene: .kilo/plans/1790923392937-openrouter-provider-routing-plan.md (left on disk), .backlog symlink and lux ZIPs (now .gitignored). Ticket remains Testing — Done is the developer's call.
+---
+<!-- COMMENTS:END -->
 
 ## Final Summary
 
