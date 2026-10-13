@@ -72,4 +72,10 @@ created: 2026-10-13 18:57
 ---
 Route-map ticket ids: step 1 = kilo-14.1 (project parameter store service, **Next**), step 2 = kilo-14.2 (wire the selection chain to the project store; drop model.json tiers, blocked by 1), step 3 = kilo-14.3 (strongest-effort default, blocked by 2). Dependencies are wired natively (14.2 depends on 14.1; 14.3 depends on 14.2).
 ---
+
+author: dev1
+created: 2026-10-13 19:08
+---
+Restructured 2026-10-13 (developer request): three sub-tickets collapsed into TWO. Supersedes the route-map ids comment above. New structure: step 1 = kilo-14.1 (project parameter store + selection-chain wiring - store service, chain reads/writes, model.json decoupling, remembered-agent move; Next), step 2 = kilo-14.2 (strongest-effort default, rank-based; blocked by 1). Former wiring and default tickets were archived and their content merged/migrated. Dependencies rewired natively: 14.2 depends on 14.1.
+---
 <!-- COMMENTS:END -->
