@@ -4,8 +4,17 @@ Kilo CLI is an open source AI coding agent that generates code from natural lang
 
 - ALWAYS USE PARALLEL TOOLS WHEN APPLICABLE.
 - The default branch in this repo is `main`.
+- **Treat upstream as Kilo Code** (`upstream` remote = `Kilo-Org/kilocode`). This repo is the **Deluxe edition** — a fork of Kilo Code. Judge every change's conflict surface against Kilo Code, not against opencode (the opencode merge notes below describe Kilo-Org's own upstream, not this fork's).
+- **Prefer Deluxe-owned implementations** — this fork's own components, dialogs, and windows — over editing Kilo Code UI code. Stay away from Kilo Code UI: keep edits inside upstream UI files as small as possible, and build new surfaces in fork-owned files instead.
+- **NEVER commit automatically.** Only create commits when the user explicitly asks, and only after they have reviewed the changes (show `git status` + `git diff` first). This overrides the automation preference above for anything that writes history (`commit`, `amend`, `push`). Stage changes only if asked.
 - Prefer automation: execute requested actions without confirmation unless blocked by missing info or safety/irreversibility.
 - You may be running in a git worktree. All changes must be made in your current working directory — never modify files in the main repo checkout.
+
+## Anonymity
+
+- **Never write personal or machine-specific info** into anything produced in this repo — tickets, comments, docs, plans, specs, code, commit messages, or chat reports: no real names, usernames, emails, personal or absolute filesystem paths (`/home/...`, `/Users/...`, `C:\...`), or machine identifiers.
+- **Use the anonymized identity `dev1`** for ticket assignees and agent authorship in written content. **Never change the git identity or other git config** (`user.name`/`user.email`, remotes, hooks): commit authorship belongs to the user's environment config even when it carries a personal identity — anonymizing it is the user's own call (a one-time rewrite the user explicitly orders, e.g. the tracker-history rewrite, is the exception and is reported afterwards).
+- **Repo-relative paths only** (`packages/opencode/src/...`); never reference paths outside the repo checkout.
 
 ## Build and Dev
 
@@ -176,6 +185,11 @@ When creating or managing GitHub issues for the VS Code extension or JetBrains p
 
 Kilo CLI is a fork of [opencode](https://github.com/anomalyco/opencode).
 
+**"Upstream" terminology**: in this repo there are two things called "upstream", and they are not interchangeable:
+
+- **Kilo upstream (release sync)** — the source of this fork's own code: the Kilo release branches (`origin/main` and Kilo `main` releases). When a developer says "check for a new version from upstream", "sync upstream", or "merge upstream" about Kilo releases, they mean **this** — syncing with Kilo's `main`, never opencode.
+- **opencode upstream (fork merge)** — `anomalyco/opencode` (`upstream/dev`), referenced only in the fork-merge process below. Merging it is a deliberate, separately-scoped operation — never assume a generic "sync to upstream" request means opencode.
+
 **Very important**: when planning or coding, update shared files with OpenCode as last resort! Everything is shared code from OpenCode, except folders that contain `kilo` in the name or have a parent directory that contains `kilo` in the name. Example of kilo specific folders: `packages/opencode/src/kilocode/` and `packages/kilo-docs/`. Always look for ways to implement your feature or fix in a way that minimizes changes to shared code.
 
 ### Minimizing Merge Conflicts
@@ -214,3 +228,89 @@ When editing shared upstream files, mark Kilo-specific lines with `kilocode_chan
 Markers are NOT needed in paths that contain `kilocode` in the name (e.g. `packages/opencode/src/kilocode/`, `packages/opencode/test/kilocode/`) — these are entirely Kilo Code additions and won't conflict with upstream.
 
 For decision rules on when to keep changes inline vs. extract Kilo logic, marker placement guidance, and verification commands, load `.kilo/skills/kilocode-merge-minimizer/SKILL.md`.
+
+## Agent skills
+Load skills from: .agents/skills
+
+### Issue tracker
+
+**Source of truth: [Backlog.md](docs/agents/backlog.md) via the `backlog` MCP server (data in `.backlog/`, a symlink to the `issue-tracker` branch's worktree — setup: backlog.md → "Tracker branch").** All new issues, epics, milestones, and comments go there — via the backlog MCP tools, never hand-edited `.backlog/` files (config exception: `statuses`/`types`/`labels` in `.backlog/config.yml` are edited directly; restart the MCP server after — it caches both lists).
+
+- **Tracker data never rides development branches**: never stage, commit, or ship `.backlog/` changes in a feature PR. The board is readable/writable from any branch through the symlink; board commit/push handling (incl. stale uncommitted work): backlog.md → "Board commits and pushes". The `issue-tracker` branch is an orphan kept local to this clone — agents never push it.
+- **Overrides the skills**: "publish to `.scratch/`", `Status:` lines, wayfinder maps there → Backlog tasks instead (wayfinder maps = parent+child tasks with native `dependencies`); mapping table: `docs/agents/issue-tracker.md`. Don't "fix" the skills — upstream.
+- **Findings, plans, and specs live on the board, not as loose files**: research findings, wayfinder assets, implementation plans, and specs are Backlog **documents** (backlog MCP `document_*` tools) or the resolving ticket's comments — never standalone files in `.kilo/plans/`, `.scratch/`, or ad-hoc repo `.md` files. `.kilo/plans/` is reserved for Plan-mode files only. ADRs stay in `docs/adr/`, user-facing docs in `docs/`.
+
+### Triage labels
+
+Triage state = Backlog **statuses + labels**, not file status lines; **board statuses are not wayfinder statuses** — roles ride as labels. Labels = workflow state only — the task **type** is the only category marker; `Draft` only on the developer's explicit "draft". Full mapping (legacy roles → status+label, time-aware labels): `docs/agents/triage-labels.md`.
+
+### Task lifecycle (never auto-Done)
+
+Canonical spec: backlog.md → "Ticket flow". The gates:
+
+- **Create:** find a suitable epic (open or closed) first — found → ask attach-or-new; not found → standalone. Status explicit: current/soon → `To Do`; future/reminder or fresh report → `Backlog` (+ `needs-triage` for reports). Uncertain → ask.
+- **Spec:** speccing a `Backlog` ticket moves it to `To Do` (speccing = soon).
+- **Start:** claim (assign) + `In Progress` before any work.
+- **Finish:** → **`Testing`** + completion summary (`finalSummary` or comment) — **never `Done`** (overrides the backlog MCP task-finalization guidance; repo docs > tools/skills).
+- **`Done` is the developer's call**, per task, on explicit instruction after testing. Agents may ask; never move unilaterally, never `Testing` → `Done` automatically.
+- **Fixes after Testing:** small → same ticket (`Testing` → `In Progress`); extensive → propose a new ticket; unclear → ask.
+- **Two parents:** feature root (`epic`, carries the spec, mirrors children) vs `initiative` (specless long-running container, parked `To Do`, no mirroring, retired by hand = archived). Mirroring: parent = least-advanced child stage, capped at `Testing`; a fresh child on a `Done` root reopens it.
+- **Time-aware tickets:** `time-gated`/`recurring` tickets carry gate/recurrence lines (`docs/agents/backlog.md` → "Time-gated & recurring tickets"); an agent that reads or edits one inside its warning window or overdue flags that in the response.
+- Wayfinder decision tickets, the soft frontier, and exceptions: backlog.md → "Lifecycle".
+
+### Domain docs
+
+Single-context layout — one `GLOSSARY.md` + `docs/adr/` at the repo root. See `docs/agents/domain.md`.
+
+## Precedence (repo docs override skills)
+
+Skills (`.agents/skills/`, `.kilo/skills/`, `.kilocode/skills/`) may be overwritten or reinstalled — conveniences, **not** the source of truth. On conflict, repo files win:
+
+1. `AGENTS.md` (this file) — always loaded
+2. `docs/agents/*.md` (issue tracker, triage labels, domain docs)
+
+Follow the repo file and note the override.
+
+## Resolve fog before build requests
+
+Before asking the user for permission to build, deploy, run, or ship anything:
+
+1. First clear up all open questions ("fog") — unanswered decisions from the current task and any earlier questions the user has not answered yet.
+2. Present the answers/decisions and get them confirmed.
+3. Only after everything is settled may you ask "may I build now?" via the question tool or in text.
+
+Never bundle a "should I build/run now?" question into a batch that still contains unanswered decisions. The build-permission question is always last.
+
+## No false choices
+
+Every option presented to the user must be a complete, standalone path to the goal. If an option only works in combination with another option, say so explicitly or fold the combination into a single option — never present a subset as a peer alternative. If options differ in total amount of work, that difference belongs in the option's description.
+
+<!-- BACKLOG.MD MCP GUIDELINES START -->
+<!-- backlog.md-instructions-version: 1.53.0 -->
+
+<CRITICAL_INSTRUCTION>
+
+## BACKLOG WORKFLOW INSTRUCTIONS
+
+This project uses Backlog.md MCP for all task and project management activities.
+
+**CRITICAL GUIDANCE**
+
+- If your client supports MCP resources, read `backlog://workflow/overview` to understand when and how to use Backlog for this project.
+- If your client only supports tools or the above request fails, call `backlog.get_backlog_instructions()` to load the tool-oriented overview. Use the `instruction` selector when you need `task-creation`, `task-execution`, or `task-finalization`.
+
+- **First time working here?** Read the overview resource IMMEDIATELY to learn the workflow
+- **Already familiar?** You should have the overview cached ("## Backlog.md Overview (MCP)")
+- **When to read it**: BEFORE creating tasks, or when you're unsure whether to track work
+
+These guides cover:
+- Decision framework for when to create tasks
+- Search-first workflow to avoid duplicates
+- Links to detailed guides for task creation, execution, and finalization
+- MCP tools reference
+
+You MUST read the overview resource to understand the complete workflow. The information is NOT summarized here.
+
+</CRITICAL_INSTRUCTION>
+
+<!-- BACKLOG.MD MCP GUIDELINES END -->
