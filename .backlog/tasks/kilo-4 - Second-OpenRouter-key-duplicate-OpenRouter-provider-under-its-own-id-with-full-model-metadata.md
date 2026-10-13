@@ -3,10 +3,10 @@ id: KILO-4
 title: >-
   Second OpenRouter key: duplicate OpenRouter provider under its own id with
   full model metadata
-status: To Do
+status: Done
 assignee: []
 created_date: '2026-10-05 10:11'
-updated_date: '2026-10-05 10:15'
+updated_date: '2026-10-13 13:15'
 labels: []
 dependencies: []
 type: enhancement
@@ -41,3 +41,12 @@ Implementation outline:
 - [ ] #4 Implementation lives in Kilo-owned paths (kilocode directories) so upstream merges stay clean; any shared-file edit carries kilocode_change markers
 - [ ] #5 User's stated end condition met: pick the second provider from the model finder at the bottom of the JetBrains UI and post images with it
 <!-- AC:END -->
+
+## Comments
+
+<!-- COMMENTS:BEGIN -->
+created: 2026-10-13 13:15
+---
+Superseded by KILO-12 (user decision 2026-10-13, post-reset): the mechanism changed from a hardcoded duplicate provider (Option A) to a Settings-driven provider clone (config `cloneOf`, OpenRouter-only, name → auto id). This ticket's codebase research was re-verified against the reset repo and folded into KILO-12's description. Closing as superseded.
+---
+<!-- COMMENTS:END -->
