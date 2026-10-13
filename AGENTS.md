@@ -229,6 +229,14 @@ Markers are NOT needed in paths that contain `kilocode` in the name (e.g. `packa
 
 For decision rules on when to keep changes inline vs. extract Kilo logic, marker placement guidance, and verification commands, load `.kilo/skills/kilocode-merge-minimizer/SKILL.md`.
 
+### Database compatibility
+
+The VS Code extension (`packages/kilo-vscode/src/services/cli-backend/server-manager.ts`) and the JetBrains plugin (`KiloBackendCliManager`) force `KILO_DISABLE_CHANNEL_DB` so every Kilo-owned client — including builds bundling a repo-built CLI — shares the one official Kilo Code database (`~/.local/share/kilo/kilo.db`). Because dev/CLI builds migrate that shared database on open, the fork's DB schema must stay compatible with official Kilo Code releases:
+
+- Schema changes must be additive only: new tables, new nullable/defaulted columns, new migration entries. Never rename, drop, or retype anything an official release has shipped.
+- Any change to the database structure that would make `kilo.db` incompatible with official Kilo Code (schema drift, destructive migration, changed semantics of an existing column) must be marked with `kilocode_change` comments and paired with a runtime compat shim that restores compatibility for released CLIs — precedent: `packages/core/src/kilocode/database-compat.ts`.
+- When touching `packages/core/src/database/` or any `*/sql.ts` table definitions, verify a released CLI can still open a database the fork has migrated before finishing the change.
+
 ## Agent skills
 Load skills from: .agents/skills
 

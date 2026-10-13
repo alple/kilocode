@@ -13,6 +13,13 @@ track across machines and clones. Lux builds install side-by-side with published
 under a separate plugin id (ai.kilocode.jetbrains.lux / "Kilo Code (lux)") and never touch
 the jetbrains/v* release tags that the release workflow owns.
 
+Lux builds always bundle the repo-built CLI (kilo.cli.pinned=false): the plugin ships a
+CLI compiled from this worktree, and the plugin forces the shared official Kilo Code
+database at runtime (KILO_DISABLE_CHANNEL_DB, see KiloBackendCliManager), so bundled dev
+CLIs never fork session history into a branch-scoped database. Run the jetbrains-cli-pin
+skill's unpin flow first so the staged CLI is fresh:
+bun .kilo/skills/jetbrains-cli-pin/script/cli-pin.ts unpin
+
 Arguments:
   lux-number    Optional explicit lux counter (default: highest existing + 1, first is 1).
   base-version  Optional stable base version x.y.z (default: latest stable jetbrains/v* tag on origin).
@@ -84,6 +91,21 @@ fi
 
 if [[ -n "$(git status --porcelain)" ]]; then
   echo "Warning: the working tree has uncommitted changes; the tag records the last commit only." >&2
+fi
+
+# Lux builds bundle the repo-built CLI, which requires the unpinned state. A pinned
+# worktree would silently ship the released CLI instead (the lux2 vs lux4/5 history fork).
+if grep -Eq '^[[:space:]]*kilo\.cli\.pinned[[:space:]]*=[[:space:]]*true[[:space:]]*$' "$plugin/gradle.properties"; then
+  echo "Lux builds bundle the repo-built CLI, but this worktree is pinned (kilo.cli.pinned=true)." >&2
+  echo "Run: bun .kilo/skills/jetbrains-cli-pin/script/cli-pin.ts unpin" >&2
+  exit 1
+fi
+
+root="$(git -C "$plugin" rev-parse --show-toplevel)"
+if [[ -z "$(find "$root/packages/opencode/dist" -type f -name kilo 2>/dev/null)" ]]; then
+  echo "Warning: no repo CLI binary under packages/opencode/dist; the Gradle build fails until you run: bun .kilo/skills/jetbrains-cli-pin/script/cli-pin.ts unpin" >&2
+elif [[ -n "$(find "$root/packages/opencode/src" "$root/packages/core/src" -type f -newer "$root/packages/opencode/dist" -print -quit 2>/dev/null)" ]]; then
+  echo "Warning: CLI sources changed after the last repo CLI build; run 'cli-pin.ts regen' so the bundle is fresh." >&2
 fi
 
 echo "Building $version (lux build #$next for base $base) ..."

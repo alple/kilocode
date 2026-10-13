@@ -607,6 +607,11 @@ internal fun buildKiloCliEnv(
     put("KILO_TELEMETRY_LEVEL", if (KiloDevMode.enabled()) "off" else "all")
     if (!KiloClaudeCompatSettings.get()) put("KILO_DISABLE_CLAUDE_CODE", "true")
     put("KILOCODE_FEATURE", "jetbrains-plugin")
+    // The bundled repo-built CLI bakes a branch-scoped channel, which would route it to a
+    // private kilo-<branch>.db. Force the shared official Kilo Code database instead —
+    // same contract as the VS Code extension's resolveManagedServerEnv. Dev storage
+    // isolation is unaffected: it scopes via XDG_DATA_HOME, not the db filename.
+    put("KILO_DISABLE_CHANNEL_DB", "true")
     putIfAbsent("KILO_CONFIG_CONTENT", DEFAULT_CONFIG)
     ideEnv(log).forEach { entry -> put(entry.key, entry.value) }
     devStorageEnv(log)?.forEach { entry -> put(entry.key, entry.value) }

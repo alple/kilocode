@@ -41,8 +41,9 @@ CLI releases also attempt a pin bump PR automatically after publishing and label
 
 ## Dev Storage Isolation
 
-- In development (`runIdeSplitMode`, `runIdeBackend`, `runIdeFrontend`, or `runIde`), the Gradle property `kilo.dev.storage.isolated=true` makes the backend set `XDG_DATA_HOME`, `XDG_CONFIG_HOME`, `XDG_STATE_HOME`, and `XDG_CACHE_HOME` to `<worktree>/.kilo-dev/{data,config,state,cache}` before spawning the CLI. The worktree root comes from the `kilo.dev.worktree.root` JVM system property (auto-set by Gradle from the project directory).
-- The checked-in `Run IDE (Backend)`, `Run IDE (Frontend)`, and `Run IDE (Split Mode)` run configurations enable isolation by default (`-Pkilo.dev.storage.isolated=true`). Developers can disable it by passing `-Pkilo.dev.storage.isolated=false`.
+- In development (`runIdeSplitMode`, `runIdeBackend`, `runIdeFrontend`, or `runIde`), the backend sets `XDG_DATA_HOME`, `XDG_CONFIG_HOME`, `XDG_STATE_HOME`, and `XDG_CACHE_HOME` to `<worktree>/.kilo-dev/{data,config,state,cache}` before spawning the CLI. The worktree root comes from the `kilo.dev.worktree.root` JVM system property (auto-set by Gradle from the project directory).
+- Isolation is on by default for all `runIde*` tasks (`kilo.dev.storage.isolated` defaults to `true`): the plugin always forces the shared official DB naming (`KILO_DISABLE_CHANNEL_DB`), so XDG-based isolation is the only thing keeping dev runs off the production `kilo.db`. The checked-in `Run IDE (Backend)`, `Run IDE (Frontend)`, and `Run IDE (Split Mode)` run configurations pass it explicitly. To run against real user data, opt out with `-Pkilo.dev.storage.isolated=false`.
+- The CLI database under isolation is `<worktree>/.kilo-dev/data/kilo.db` (uniform name since `KILO_DISABLE_CHANNEL_DB` removed the per-branch db filename).
 - Use standard `XDG_*_HOME` env vars for this isolation. Do not introduce custom `KILO_DATA_DIR`, `KILO_GLOBAL_CONFIG_DIR`, `KILO_STATE_DIR`, or `KILO_CACHE_DIR` env vars — the CLI core already respects `XDG_*_HOME` via `xdg-basedir`.
 - The `.kilo-dev/` directory is gitignored and created automatically on first run.
 - The implementation lives in `KiloBackendCliManager.buildEnv()` / `devStorageEnv()`. Tests: `KiloBackendCliManagerEnvTest`.

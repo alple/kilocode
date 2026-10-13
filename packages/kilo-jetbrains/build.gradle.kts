@@ -110,7 +110,11 @@ if (release && !pinned && !lux) error(
 
 val channel = providers.gradleProperty("kilo.channel").map { it.trim() }.orElse("default")
 val splitPort = providers.gradleProperty("kilo.splitModeServerPort").map(::port).orElse(0)
-val isolated = providers.gradleProperty("kilo.dev.storage.isolated").map { it.toBoolean() }.orElse(false)
+// Dev runs isolate CLI storage under <worktree>/.kilo-dev by default. The plugin always sets
+// KILO_DISABLE_CHANNEL_DB (shared official DB naming, KiloBackendCliManager), so XDG_DIR-based
+// isolation is the only thing standing between a dev run and the production kilo.db. Opt out
+// explicitly with -Pkilo.dev.storage.isolated=false to run against real user data.
+val isolated = providers.gradleProperty("kilo.dev.storage.isolated").map { it.toBoolean() }.orElse(true)
 val worktreeRoot = providers.gradleProperty("kilo.dev.worktree.root").orElse(
     providers.provider { rootProject.layout.projectDirectory.asFile.parentFile.parentFile.canonicalPath }
 )
