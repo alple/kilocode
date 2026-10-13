@@ -1,6 +1,6 @@
 ---
 id: KILO-14.1
-title: 'JetBrains: project parameter store service'
+title: 'JetBrains: project parameter store + selection-chain wiring'
 status: To Do
 assignee:
   - dev1
