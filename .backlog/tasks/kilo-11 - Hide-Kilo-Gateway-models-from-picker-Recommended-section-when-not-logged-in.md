@@ -5,7 +5,7 @@ status: Testing
 assignee:
   - dev1
 created_date: '2026-10-13 11:09'
-updated_date: '2026-10-13 11:14'
+updated_date: '2026-10-13 11:24'
 labels: []
 dependencies: []
 priority: medium
@@ -29,6 +29,15 @@ Fix plan (single point, Kilo-owned file): in packages/opencode/src/provider/mode
 - [ ] #4 JetBrains picker Recommended section no longer lists gateway models when logged out (downstream effect; no JetBrains change needed)
 - [ ] #5 bun run typecheck passes from packages/opencode and the new test passes
 <!-- AC:END -->
+
+## Comments
+
+<!-- COMMENTS:BEGIN -->
+created: 2026-10-13 11:24
+---
+Committed and pushed per user request (2026-10-13): ed0efcdbea fix(cli) with changeset + 8-test suite. Also required f02901179a fix(jetbrains): the Gradle production gate rejected pinned=false for lux builds even though build-version.sh's shell check and the lux-counter commit (2fb61b2a34) document that exemption — lux5 would not build without it; real publish builds still require the pin. Built and pushed lux 7.1.9-lux5 (tag jetbrains-lux/v7.1.9-lux5 → f02901179a; ZIP kilo.jetbrains-7.1.9-lux5.zip, 153 MB, bundles the repo-built CLI incl. this fix). Counter advanced to 6 and committed (4129651850). User's own 'Add code' commit (48e0b2d34d, one .gitignore line) rode along on the branch push.
+---
+<!-- COMMENTS:END -->
 
 ## Final Summary
 
