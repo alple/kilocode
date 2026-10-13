@@ -3,11 +3,11 @@ id: KILO-10
 title: >-
   Sync Deluxe edition with Kilo upstream main (CLI v7.8.9, JetBrains
   v7.1.10-rc.2)
-status: In Progress
+status: Testing
 assignee:
   - dev1
 created_date: '2026-10-13 09:22'
-updated_date: '2026-10-13 09:22'
+updated_date: '2026-10-13 10:46'
 labels: []
 dependencies: []
 references:
@@ -23,29 +23,35 @@ ordinal: 33000
 ## Description
 
 <!-- SECTION:DESCRIPTION:BEGIN -->
-User asked to bring the new Kilo version into the Deluxe edition before re-adding the Deluxe favorites windows (KILO-9.3/9.4 work continues separately). Kilo upstream (upstream remote = Kilo-Org/kilocode) main is 96 commits ahead of the merge-base defcd7dffb: CLI v7.8.9, JetBrains v7.1.10-rc.2, windows job-runner perf, glob-search-ignored, and a picker-area refactor (ModelPicker internals moved to new ModelPopup, PickerPopup churn) that collides with the Deluxe parameter-picker binding swap from KILO-8.4.
-
-Recorded decision (user, 2026-10-13): restore the pickup window as in the original — resolve picker-area conflicts to the original/upstream side so the session header shows the stock model+reasoning pickers; the Deluxe model+route+effort picker goes dormant until the favorites windows return. Fork-owned Deluxe files carry over as-is; favorites windows stay deferred. lux/upstream-merge (opencode upstream/dev sync) is out of scope.
+User directive (2026-10-13, superseding the original merge plan): the Deluxe merge/conflict-revert loop was too finicky and no Deluxe features are preserved — hard reset my-features to the newest all-stable Kilo release tag and re-apply only the lux version mechanics. Base chosen: jetbrains/v7.1.9 (JB 7.1.9 stable + CLI 7.8.8 stable; the tag commit itself still says 7.1.9-rc.2, corrected to 7.1.9). Lux tooling re-applied: kilo.lux.version=5 counter (next build = 7.1.9-lux5), build-version.sh lux logic, build-lux.sh, build.gradle.kts lux plugin-id wiring, seed-branch-db.sh. Agent tooling/docs restored from the archive ref: AGENTS.md, GLOSSARY.md (user-requested), docs/agents, .agents, .kilo, script/upstream, community-triage. docs/adr/0001-0003 intentionally not restored (document dropped features; live only on archive/deluxe-my-features). End state left uncommitted for user review per explicit instruction; nothing pushed. The upstream pickup/picker window is original as-is on this base — no re-integration needed.
 <!-- SECTION:DESCRIPTION:END -->
 
 ## Acceptance Criteria
 <!-- AC:BEGIN -->
-- [ ] #1 my-features contains a merge commit of upstream/main (all 96 commits included) and `git rev-list --count my-features..upstream/main` is 0
-- [ ] #2 Session-header picker shows the original/upstream model+reasoning pickers (new ModelPopup flow); the Deluxe parameter picker binding swap is removed from shared PromptPanel/SessionUi code
-- [ ] #3 Fork-owned Deluxe sources (KiloParameterPicker, KiloFavorites*, KiloRouting*) still compile after the merge; anything that cannot compile is reported, not silently dropped
-- [ ] #4 CLI: `bun run typecheck` and `bun test` pass from packages/opencode (pre-existing failures documented if any)
-- [ ] #5 JetBrains: `./gradlew typecheck` and `./gradlew test` pass from packages/kilo-jetbrains (pre-existing failures documented if any)
-- [ ] #6 `bun run script/check-opencode-annotations.ts --worktree` passes; kilocode_change markers in resolved shared files are intact
-- [ ] #7 Nothing is pushed; the merge commit lands on my-features only
-- [ ] #8 Ticket moved to Testing with a final summary listing conflict resolutions and verification results
+- [ ] #1 my-features is reset to the stable jetbrains/v7.1.9 release commit (08981b3a30; CLI 7.8.8 + JB 7.1.9), with the prior Deluxe work preserved on archive/deluxe-my-features
+- [ ] #2 Version fixes applied: gradle.properties reads kilo.jetbrains.version=7.1.9 (tag's -rc.2 string corrected), kilo.lux.version=5 counter preserved, kilo.cli.pinned=false for local lux builds
+- [ ] #3 Lux build tooling restored and syntax-checked: build-version.sh lux logic, build-lux.sh, build.gradle.kts lux plugin-id wiring, script/dev/seed-branch-db.sh
+- [ ] #4 Agent tooling/docs restored from the archive ref: AGENTS.md, GLOSSARY.md, docs/agents, .agents, .kilo, script/upstream, community-triage files; docs/adr 0001-0003 intentionally not restored (document dropped features)
+- [ ] #5 End state left uncommitted for user review per explicit instruction; nothing pushed
+- [ ] #6 JetBrains gradle typecheck passes; CLI sources untouched from the released tag
+- [ ] #7 Ticket moved to Testing with this summary; never auto-Done
 <!-- AC:END -->
 
 ## Implementation Plan
 
 <!-- SECTION:PLAN:BEGIN -->
-1. Preview conflicts with `git merge-tree`, then `git merge upstream/main` on `my-features` (no push).
-2. Conflict policy (user-approved 2026-10-13): shared picker-area files where Deluxe holds small marked edits — `PromptPanel.kt` (parameters ctor/binding swap), `SessionUi.kt` (parameters wiring) — resolve to the upstream side so the session header shows the original model+reasoning pickers (new ModelPopup flow); the Deluxe parameter picker becomes dormant. Fork-owned files (`ai/kilocode/client/deluxe/*`, KiloFavorites*, tests) carry over unchanged; XML registrations and KiloBundle.properties merge both sides; SessionModel/SessionController freeze guards stay (controller-level, harmless while the picker is unbound, keeps ParameterFreezeTest green).
-3. Fix fallout: the fork-added PromptPanel binding-swap test gets adapted/removed; fork-owned files using upstream picker internals (PickerPopup churn) get minimal fixes to compile.
-4. Verify: CLI `bun run typecheck` + `bun test` from packages/opencode; JetBrains `./gradlew typecheck` + `./gradlew test` from packages/kilo-jetbrains; `bun run script/check-opencode-annotations.ts --worktree`.
-5. Finalize the merge commit on my-features, record resolutions in notes, move ticket to Testing with finalSummary. Never auto-Done.
+1. Base = jetbrains/v7.1.9 tag (user chose release tags over upstream/main; v7.8.8 CLI tag is contained in it; its gradle.properties says 7.1.9-rc.2 which the version fix corrects to 7.1.9).
+2. Safety: archive/deluxe-my-features branch points at the pre-reset HEAD.
+3. Reset: abort staged merge, git reset --hard jetbrains/v7.1.9.
+4. Restore from archive ref: lux build bits (gradle.properties, build-version.sh, build-lux.sh, build.gradle.kts, seed-branch-db.sh) + agent tooling/docs (AGENTS.md, GLOSSARY.md, docs/agents, docs/community-triage.md, .agents, .kilo, script/upstream, community-triage) — staged, not committed (user instruction).
+5. Not restored: docs/adr 0001-0003, all packages/* Deluxe source (parameter picker, preset store, routing, favorites, CLI route support).
+6. Sync node_modules via bun install; discard bun.lock churn to keep the tag lock pristine.
+7. Verify: bash -n both scripts; gradle.properties version state; JB gradlew typecheck.
+8. Move ticket to Testing with summary; user reviews the staged state and commits (or asks me to).
 <!-- SECTION:PLAN:END -->
+
+## Final Summary
+
+<!-- SECTION:FINAL_SUMMARY:BEGIN -->
+Executed the user-approved reset instead of the conflict-prone merge. Steps: created archive/deluxe-my-features (full prior Deluxe work), aborted the staged upstream merge, hard-reset my-features to jetbrains/v7.1.9 (08981b3a30 — newest commit where both products are released stable: CLI 7.8.8, JB 7.1.9). Restored from the archive ref (100 staged files): lux build bits (gradle.properties with 7.1.9/-lux counter 5/pinned=false, build-version.sh lux logic, build-lux.sh, build.gradle.kts lux plugin id/name wiring, seed-branch-db.sh) and agent tooling/docs (AGENTS.md, GLOSSARY.md, docs/agents, docs/community-triage.md, .agents, .kilo, script/upstream, community-triage). deliberately not restored: docs/adr/0001-0003 (document dropped Deluxe features) and all packages/* Deluxe source. Verified: bash -n on both scripts OK; gradle.properties/version state confirmed; JetBrains ./gradlew typecheck EXIT=0; CLI untouched from released tag. bun.lock churn from install discarded (tag lock kept pristine). State left UNCOMMITTED for user review (100 staged files + untracked .backlog symlink/.kilo/worktrees/old lux ZIPs). Nothing pushed. Next lux build: script/build-version.sh 7.1.9-lux -> 7.1.9-lux5.
+<!-- SECTION:FINAL_SUMMARY:END -->
