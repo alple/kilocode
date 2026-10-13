@@ -4,6 +4,7 @@ Kilo CLI is an open source AI coding agent that generates code from natural lang
 
 - ALWAYS USE PARALLEL TOOLS WHEN APPLICABLE.
 - The default branch in this repo is `main`.
+- **Fork focus: the JetBrains plugin only.** The main focus of this Deluxe edition and this fork is **only** `packages/kilo-jetbrains/`. The TUI is nice to have; VS Code compatibility is not a goal — the fork may be incompatible with it. Do not invest effort in VS Code-only features or cross-surface compatibility with the VS Code extension; when a trade-off must be made, JetBrains wins.
 - **Treat upstream as Kilo Code** (`upstream` remote = `Kilo-Org/kilocode`). This repo is the **Deluxe edition** — a fork of Kilo Code. Judge every change's conflict surface against Kilo Code, not against opencode (the opencode merge notes below describe Kilo-Org's own upstream, not this fork's).
 - **Prefer Deluxe-owned implementations** — this fork's own components, dialogs, and windows — over editing Kilo Code UI code. Stay away from Kilo Code UI: keep edits inside upstream UI files as small as possible, and build new surfaces in fork-owned files instead.
 - **NEVER commit automatically.** Only create commits when the user explicitly asks, and only after they have reviewed the changes (show `git status` + `git diff` first). This overrides the automation preference above for anything that writes history (`commit`, `amend`, `push`). Stage changes only if asked.
@@ -262,7 +263,7 @@ Canonical spec: backlog.md → "Ticket flow". The gates:
 - **Finish:** → **`Testing`** + completion summary (`finalSummary` or comment) — **never `Done`** (overrides the backlog MCP task-finalization guidance; repo docs > tools/skills).
 - **`Done` is the developer's call**, per task, on explicit instruction after testing. Agents may ask; never move unilaterally, never `Testing` → `Done` automatically.
 - **Fixes after Testing:** small → same ticket (`Testing` → `In Progress`); extensive → propose a new ticket; unclear → ask.
-- **Two parents:** feature root (`epic`, carries the spec, mirrors children) vs `initiative` (specless long-running container, parked `To Do`, no mirroring, retired by hand = archived). Mirroring: parent = least-advanced child stage, capped at `Testing`; a fresh child on a `Done` root reopens it.
+- **Two parents:** feature root (`epic`, carries the spec + a route map of its children, mirrors children) vs `initiative` (specless long-running container, parked `To Do`, no mirroring, retired by hand = archived). Mirroring: parent = least-advanced child stage, capped at `Testing`; a fresh child on a `Done` root reopens it.
 - **Time-aware tickets:** `time-gated`/`recurring` tickets carry gate/recurrence lines (`docs/agents/backlog.md` → "Time-gated & recurring tickets"); an agent that reads or edits one inside its warning window or overdue flags that in the response.
 - Wayfinder decision tickets, the soft frontier, and exceptions: backlog.md → "Lifecycle".
 
