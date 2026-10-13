@@ -3,10 +3,11 @@ id: KILO-14
 title: >-
   JetBrains: model + effort selection that sticks — per-project store,
   strongest-effort default
-status: Backlog
+status: To Do
 assignee:
   - dev1
 created_date: '2026-10-13 18:56'
+updated_date: '2026-10-13 18:57'
 labels: []
 dependencies: []
 ordinal: 37000
