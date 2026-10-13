@@ -3,13 +3,16 @@ id: KILO-14.2
 title: >-
   JetBrains: wire the selection chain to the project store; drop model.json
   tiers
-status: Backlog
+status: To Do
 assignee:
   - dev1
 created_date: '2026-10-13 18:56'
+updated_date: '2026-10-13 18:56'
 labels: []
-dependencies: []
+dependencies:
+  - KILO-14.1
 parent_task_id: KILO-14
+priority: high
 ordinal: 39000
 ---
 
