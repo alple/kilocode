@@ -46,6 +46,7 @@ import ai.kilocode.client.session.ui.prompt.SlashAction
 import ai.kilocode.client.session.ui.prompt.mentionParts as promptMentionParts
 import ai.kilocode.client.session.ui.rail.PromptRailController
 import ai.kilocode.client.session.settings.ApprovalReasonVisibilityListener
+import ai.kilocode.client.session.settings.ChatStyleSettingsListener
 import ai.kilocode.client.session.ui.account.SessionAccountOverlay
 import ai.kilocode.client.session.ui.popup.HeaderPopupController
 import ai.kilocode.client.session.ui.SessionDropOverlay
@@ -952,6 +953,12 @@ class SessionUi(
             }
         })
         bus.subscribe(LafManagerListener.TOPIC, LafManagerListener {
+            ApplicationManager.getApplication().invokeLater {
+                if (disposed) return@invokeLater
+                applyStyle(SessionEditorStyle.current())
+            }
+        })
+        bus.subscribe(ChatStyleSettingsListener.TOPIC, ChatStyleSettingsListener {
             ApplicationManager.getApplication().invokeLater {
                 if (disposed) return@invokeLater
                 applyStyle(SessionEditorStyle.current())

@@ -230,7 +230,7 @@ class ReasoningViewTest : BasePlatformTestCase() {
         val view = ReasoningView(reasoning("p1", done = true, text = "one"))
         val font = view.headerFont()
 
-        assertEquals(style.smallEditorFont.name, font.name)
+        assertEquals(style.thinkingFont.name, font.name)
         assertTrue(font.size < style.editorSize)
     }
 
@@ -251,7 +251,7 @@ class ReasoningViewTest : BasePlatformTestCase() {
 
         assertSame(component, view.md.component)
         assertSmallItalicSheet(view.md.overrideSheet(), style)
-        assertEquals(style.smallEditorFont.name, view.headerFont().name)
+        assertEquals(style.thinkingFont.name, view.headerFont().name)
         assertTrue(view.headerFont().size < style.editorSize)
     }
 
@@ -372,7 +372,7 @@ class ReasoningViewTest : BasePlatformTestCase() {
     }
 
     private fun assertSmallItalicSheet(sheet: String, style: SessionEditorStyle) {
-        assertTrue(sheet.contains(style.smallEditorFont.name))
+        assertTrue(sheet.contains(style.thinkingFont.name))
         assertFalse(sheet.contains("${style.editorSize}pt"))
         assertTrue(sheet.contains("font-style: italic"))
     }

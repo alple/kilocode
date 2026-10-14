@@ -2,6 +2,7 @@ package ai.kilocode.client.session.ui
 
 import ai.kilocode.client.session.ui.style.SessionEditorStyle
 import ai.kilocode.client.session.ui.style.SessionUiStyle
+import ai.kilocode.client.settings.appearance.ChatFontSpec
 import ai.kilocode.client.ui.UiStyle
 import com.intellij.ide.ui.UISettings
 import com.intellij.ide.ui.UISettingsUtils
@@ -135,7 +136,57 @@ class SessionEditorStyleTest : BasePlatformTestCase() {
 
         factory.releaseEditor(editor)
 
-        SessionEditorStyle.current().applyTranscriptToEditor(editor)
+        SessionEditorStyle.current().applyInputToEditor(editor)
+    }
+
+    // --- chat font settings: per-group offsets and family override ---
+
+    fun `test thinking font matches small text by default`() {
+        val base = SessionEditorStyle.create(family = "Courier New", size = 22)
+        assertEquals(base.smallEditorFont.size, base.thinkingFont.size)
+        assertEquals(UiStyle.Fonts.small().name, base.thinkingFont.name)
+        assertEquals(UiStyle.Fonts.regular().name, base.promptFont.name)
+        assertEquals(base.transcriptFont.size, base.promptFont.size)
+    }
+
+    fun `test per-group offsets shift only their group`() {
+        val base = SessionEditorStyle.create(family = "Courier New", size = 22)
+        val shifted = SessionEditorStyle.create(
+            family = "Courier New",
+            size = 22,
+            chat = ChatFontSpec(response = 1f, thinking = 2f, tool = 3f, prompt = 4f),
+        )
+        assertEquals(base.editorSize + 1, shifted.transcriptFont.size)
+        assertEquals(base.smallEditorFont.size + 2, shifted.thinkingFont.size)
+        assertEquals(base.editorSize + 3, shifted.editorFont.size)
+        assertEquals(base.editorSize + 3, shifted.codeSize)
+        assertEquals(base.editorSize + 4, shifted.promptFont.size)
+        assertEquals(base.editorSize, shifted.boldEditorFont.size)
+    }
+
+    fun `test chat family override replaces proportional chat text family only`() {
+        val shifted = SessionEditorStyle.create(
+            family = "Courier New",
+            size = 22,
+            chat = ChatFontSpec(family = "Dialog"),
+        )
+        assertEquals("Dialog", shifted.transcriptFont.name)
+        assertEquals("Dialog", shifted.thinkingFont.name)
+        assertEquals("Dialog", shifted.promptFont.name)
+        assertEquals("Courier New", shifted.editorFont.name)
+        assertEquals("Courier New", shifted.editorFamily)
+        assertEquals(UiStyle.Fonts.regular().name, shifted.regularFont.name)
+        assertEquals(UiStyle.Fonts.small().name, shifted.smallFont.name)
+    }
+
+    fun `test default spec preserves derived sizes`() {
+        val base = SessionEditorStyle.create(family = "Courier New", size = 22)
+        val withDefaults = SessionEditorStyle.create(family = "Courier New", size = 22, chat = ChatFontSpec.DEFAULT)
+        assertEquals(22, withDefaults.codeSize)
+        assertEquals(base.transcriptFont.size, withDefaults.transcriptFont.size)
+        assertEquals(base.editorFont.size, withDefaults.editorFont.size)
+        assertEquals(base.thinkingFont.size, withDefaults.thinkingFont.size)
+        assertEquals(base.promptFont.size, withDefaults.promptFont.size)
     }
 
     fun `test applyToEditor skips redundant scheme reinit for the same snapshot`() {

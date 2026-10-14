@@ -1,6 +1,7 @@
 package ai.kilocode.client.settings
 
 import ai.kilocode.client.util.edtWait
+import ai.kilocode.client.settings.appearance.AppearanceConfigurable
 import ai.kilocode.client.settings.profile.UserProfileConfigurable
 import ai.kilocode.client.settings.context.ContextConfigurable
 import ai.kilocode.client.settings.integrations.IntegrationsConfigurable
@@ -33,6 +34,10 @@ class KiloSettingsConfigurableTest : BasePlatformTestCase() {
 
     fun `test child models id matches xml registration`() {
         assertEquals("ai.kilocode.jetbrains.settings.models", ModelsConfigurable.ID)
+    }
+
+    fun `test child appearance id matches xml registration`() {
+        assertEquals("ai.kilocode.jetbrains.settings.appearance", AppearanceConfigurable.ID)
     }
 
     fun `test child context id matches xml registration`() {
@@ -126,7 +131,7 @@ class KiloSettingsConfigurableTest : BasePlatformTestCase() {
             val panel = cfg.createComponent()
             val labels = links(panel as Container).map { it.text }
             assertEquals(
-                listOf("User Profile", "Models", "Providers", "Marketplace", "Agent Behavior", "Auto-Approve", "Context", "Checkpoints", "Integrations", "Advanced"),
+                listOf("User Profile", "Models", "Appearance", "Providers", "Marketplace", "Agent Behavior", "Auto-Approve", "Context", "Checkpoints", "Integrations", "Advanced"),
                 labels,
             )
         }

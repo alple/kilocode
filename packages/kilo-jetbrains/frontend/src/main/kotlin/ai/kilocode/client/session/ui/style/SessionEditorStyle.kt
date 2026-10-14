@@ -1,5 +1,7 @@
 package ai.kilocode.client.session.ui.style
 
+import ai.kilocode.client.settings.appearance.ChatFontSpec
+import ai.kilocode.client.settings.appearance.KiloAppearanceSettingsService
 import ai.kilocode.client.ui.UiStyle
 import com.intellij.ide.ui.UISettingsUtils
 import com.intellij.openapi.editor.colors.EditorColorsManager
@@ -20,12 +22,17 @@ import kotlin.math.roundToInt
  * Session UI uses this instead of reading editor globals in every component so font and color changes can be applied
  * consistently through [SessionEditorStyleTarget].
  *
- * Editor-specific fields ([editorFont], [editorForeground], [editorBackground]) are derived from the active editor color
- * scheme and are used for code/editor-rendered content.
+ * Editor-specific fields ([editorFont], [editorFamily], [editorSize], [codeSize], [editorForeground],
+ * [editorBackground]) are derived from the active editor color scheme and are used for code/editor-rendered content;
+ * [codeSize] is the editor size with the tool/code offset applied.
  *
- * UI font fields ([transcriptFont], [smallEditorFont], [boldEditorFont], [headerFont], [regularFont], [boldFont],
- * [smallFont]) come from [UiStyle.Fonts] and follow standard platform typography. Transcript fonts use the
- * editor size so the session body tracks editor zoom without adopting the editor family.
+ * UI font fields ([transcriptFont], [thinkingFont], [promptFont], [smallEditorFont], [boldEditorFont],
+ * [headerFont], [regularFont], [boldFont], [smallFont]) come from [UiStyle.Fonts] and follow standard platform
+ * typography. Transcript fonts use the editor size so the session body tracks editor zoom without adopting the editor
+ * family. Chat font settings apply per-group offsets on top: [transcriptFont] carries the chat-response offset,
+ * [thinkingFont] the thinking offset, [promptFont] the prompt offset; a chat family override replaces the family of
+ * those three only. [applyToEditor] sizes embedded code editors with [codeSize] and [applyInputToField]/
+ * [applyPromptToEditor] style user-input editors with [promptFont].
  */
 data class SessionEditorStyle(
     val editorScheme: EditorColorsScheme,
@@ -35,12 +42,15 @@ data class SessionEditorStyle(
     val editorBackground: Color,
     val editorFont: Font,
     val transcriptFont: Font,
+    val thinkingFont: Font,
+    val promptFont: Font,
     val smallEditorFont: Font,
     val boldEditorFont: Font,
     val headerFont: Font,
     val regularFont: Font,
     val boldFont: Font,
     val smallFont: Font,
+    val codeSize: Int,
 ) {
     /** Apply this snapshot to embedded IntelliJ editor components used by session UI. */
     fun applyToEditor(editor: EditorEx) {
@@ -52,36 +62,36 @@ data class SessionEditorStyle(
             // identity check is enough and avoids repeated O(lines) reinit on redundant applyStyle.
             if (editor.getUserData(APPLIED) === this) return
             editor.setColorsScheme(editorScheme)
-            editor.setFontSize(editorSize)
+            editor.setFontSize(codeSize)
             editor.putUserData(APPLIED, this)
         } catch (err: RuntimeException) {
             if (err.javaClass.name != "com.intellij.openapi.util.TraceableDisposable\$DisposalException") throw err
         }
     }
 
-    /** Apply editor colors while using standard transcript typography for the embedded editor text. */
-    fun applyTranscriptToEditor(editor: EditorEx) {
+    /** Apply user-input typography to an embedded editor (prompt, question answers). */
+    fun applyInputToEditor(editor: EditorEx) {
         try {
             if (editor.isDisposed) return
             applyToEditor(editor)
             if (editor.isDisposed) return
-            editor.colorsScheme.setEditorFontName(transcriptFont.fontName)
-            editor.colorsScheme.setEditorFontSize(transcriptFont.size)
+            editor.colorsScheme.setEditorFontName(promptFont.fontName)
+            editor.colorsScheme.setEditorFontSize(promptFont.size)
         } catch (err: RuntimeException) {
             if (err.javaClass.name != "com.intellij.openapi.util.TraceableDisposable\$DisposalException") throw err
         }
     }
 
-    /** Apply standard transcript typography to an editor text field and its embedded editor when available. */
-    fun applyTranscriptToField(field: EditorTextField) {
-        field.font = transcriptFont
-        field.getEditor(false)?.let(::applyTranscriptToEditor)
+    /** Apply user-input typography to an editor text field and its embedded editor when available. */
+    fun applyInputToField(field: EditorTextField) {
+        field.font = promptFont
+        field.getEditor(false)?.let(::applyInputToEditor)
     }
 
     /** Apply the visible prompt-input text styling to embedded session editor components. */
     fun applyPromptToEditor(editor: EditorEx, background: Color = editorBackground) {
         if (editor.isDisposed) return
-        applyTranscriptToEditor(editor)
+        applyInputToEditor(editor)
         if (editor.isDisposed) return
         editor.setBorder(JBUI.Borders.empty())
         editor.scrollPane.border = JBUI.Borders.empty()
@@ -105,20 +115,24 @@ data class SessionEditorStyle(
         /** Marks the last style snapshot applied to an editor so [applyToEditor] can skip redundant reinit. */
         private val APPLIED = Key.create<SessionEditorStyle>("kilo.session.editor.style")
 
-        /** Builds a style snapshot from the current global editor color scheme. */
-        fun current(): SessionEditorStyle {
-            val scheme = EditorColorsManager.getInstance().globalScheme
-            val size = UISettingsUtils.getInstance()
+        /** Editor font size with the IDE zoom applied; the base every chat font derivation starts from. */
+        fun baseSize(scheme: EditorColorsScheme = EditorColorsManager.getInstance().globalScheme): Int =
+            UISettingsUtils.getInstance()
                 .scaleFontSize(scheme.editorFontSize.toFloat())
                 .roundToInt()
                 .coerceAtLeast(1)
-            return create(scheme, scheme.editorFontName, size)
+
+        /** Builds a style snapshot from the current global editor color scheme and chat appearance settings. */
+        fun current(): SessionEditorStyle {
+            val scheme = EditorColorsManager.getInstance().globalScheme
+            return create(scheme, scheme.editorFontName, baseSize(scheme), KiloAppearanceSettingsService.current())
         }
 
         internal fun create(
             scheme: EditorColorsScheme = EditorColorsManager.getInstance().globalScheme,
             family: String = scheme.editorFontName,
             size: Int = scheme.editorFontSize,
+            chat: ChatFontSpec = ChatFontSpec.DEFAULT,
         ): SessionEditorStyle {
             val small = scaledEditorSize(size, JBFont.small())
             return SessionEditorStyle(
@@ -127,14 +141,20 @@ data class SessionEditorStyle(
                 editorSize = size,
                 editorForeground = scheme.defaultForeground,
                 editorBackground = scheme.defaultBackground,
-                editorFont = Font(family, Font.PLAIN, size),
-                transcriptFont = uiFont(UiStyle.Fonts.regular(), Font.PLAIN, size),
+                // Tool output & code: the editor family at the base size shifted by the tool offset. A plain
+                // Font on purpose — embedded editors re-read scheme fonts, and labels/areas keep the exact
+                // fractional size through getSize2D.
+                editorFont = Font(family, Font.PLAIN, size).deriveFont(Font.PLAIN, (size + chat.tool).coerceAtLeast(1f)),
+                transcriptFont = chatTextFont(UiStyle.Fonts.regular(), size + chat.response, chat.family),
+                thinkingFont = chatTextFont(UiStyle.Fonts.small(), small + chat.thinking, chat.family),
+                promptFont = chatTextFont(UiStyle.Fonts.regular(), size + chat.prompt, chat.family),
                 smallEditorFont = uiFont(UiStyle.Fonts.small(), Font.PLAIN, small),
                 boldEditorFont = uiFont(UiStyle.Fonts.regular(), Font.BOLD, size),
                 headerFont = UiStyle.Fonts.header(),
                 regularFont = UiStyle.Fonts.regular(),
                 boldFont = UiStyle.Fonts.bold(),
                 smallFont = UiStyle.Fonts.small(),
+                codeSize = (size + chat.tool).roundToInt().coerceAtLeast(1),
             )
         }
 
@@ -145,6 +165,15 @@ data class SessionEditorStyle(
         }
 
         private fun uiFont(font: Font, style: Int, size: Int): Font = font.deriveFont(style, size.toFloat())
+
+        /**
+         * Proportional chat text at [size] points. Keeps the platform JBFont (which rescales with the IDE
+         * font) unless a chat family override pins the family — a pinned family trades that automatic
+         * rescale for the explicit choice until the next style refresh.
+         */
+        private fun chatTextFont(base: Font, size: Float, chatFamily: String?): Font =
+            chatFamily?.let { Font(it, Font.PLAIN, 1).deriveFont(Font.PLAIN, size.coerceAtLeast(1f)) }
+                ?: base.deriveFont(Font.PLAIN, size.coerceAtLeast(1f))
     }
 }
 

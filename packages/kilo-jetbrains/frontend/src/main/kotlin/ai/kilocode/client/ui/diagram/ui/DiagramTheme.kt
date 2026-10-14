@@ -35,4 +35,4 @@ internal fun diagramTones(accent: Color): List<Color> {
     return List(8) { idx -> Color.getHSBColor(hsb[0] + idx * 0.118f, sat, bri) }
 }
 
-internal fun diagramSpec(style: SessionEditorStyle) = Spec(FontSpec(style.editorFamily, style.editorSize))
+internal fun diagramSpec(style: SessionEditorStyle) = Spec(FontSpec(style.editorFamily, style.codeSize))

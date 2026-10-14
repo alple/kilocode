@@ -185,7 +185,7 @@ class QuestionView(
         this.style = style
         super.applyStyle(style)
         customEditor?.let { ed ->
-            style.applyTranscriptToField(ed)
+            style.applyInputToField(ed)
             ed.background = SessionUiStyle.Colors.codeBlockBackground()
             syncEditorHeight(ed)
         }
@@ -526,7 +526,7 @@ class QuestionView(
             syncEditorHeight(ed, ex)
         }
         selection?.register(ed)?.let(regs::add)
-        style.applyTranscriptToField(ed)
+        style.applyInputToField(ed)
         ed.background = SessionUiStyle.Colors.codeBlockBackground()
 
         // Pre-fill with saved text. This call also forces lazy document creation so

@@ -1,6 +1,7 @@
 package ai.kilocode.client.ui.diagram.ui
 
 import ai.kilocode.client.plugin.KiloBundle
+import ai.kilocode.client.session.settings.ChatStyleSettingsListener
 import ai.kilocode.client.session.ui.style.SessionEditorStyle
 import ai.kilocode.client.session.ui.style.SessionUiStyle
 import ai.kilocode.client.ui.UiStyle
@@ -57,7 +58,8 @@ internal fun diagramContent(source: String, parent: Disposable): JComponent {
     }
 
     render()
-    ApplicationManager.getApplication().messageBus.connect(parent)
-        .subscribe(EditorColorsManager.TOPIC, EditorColorsListener { ApplicationManager.getApplication().invokeLater(::render) })
+    val bus = ApplicationManager.getApplication().messageBus.connect(parent)
+    bus.subscribe(EditorColorsManager.TOPIC, EditorColorsListener { ApplicationManager.getApplication().invokeLater(::render) })
+    bus.subscribe(ChatStyleSettingsListener.TOPIC, ChatStyleSettingsListener { ApplicationManager.getApplication().invokeLater(::render) })
     return root
 }

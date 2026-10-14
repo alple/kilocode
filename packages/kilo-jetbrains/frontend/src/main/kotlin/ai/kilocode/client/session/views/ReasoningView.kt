@@ -169,8 +169,8 @@ class ReasoningView(
     override fun applyStyle(style: SessionEditorStyle) {
         this.style = style
         var changed = false
-        if (parts.title.font != style.smallEditorFont) {
-            parts.title.font = style.smallEditorFont
+        if (parts.title.font != style.thinkingFont) {
+            parts.title.font = style.thinkingFont
             changed = true
         }
         changed = applyBodyStyle() || changed
@@ -204,7 +204,7 @@ class ReasoningView(
 
     private fun apply(md: MdView): Boolean {
         var changed = false
-        val font = style.smallEditorFont.deriveFont(Font.ITALIC)
+        val font = style.thinkingFont.deriveFont(Font.ITALIC)
         changed = md.font != font || changed
         md.font = font
         changed = md.codeFont != style.editorFamily || changed
@@ -242,7 +242,7 @@ class ReasoningView(
             addLinkListener { openSessionLink(it, openFile, openUrl) }
         }
         md.applyStyle(style)
-        md.font = style.smallEditorFont.deriveFont(Font.ITALIC)
+        md.font = style.thinkingFont.deriveFont(Font.ITALIC)
         md.codeFont = style.editorFamily
         md.foreground = SessionUiStyle.Text.Secondary.foreground()
         md.background = SessionUiStyle.Colors.codeBlockBackground()

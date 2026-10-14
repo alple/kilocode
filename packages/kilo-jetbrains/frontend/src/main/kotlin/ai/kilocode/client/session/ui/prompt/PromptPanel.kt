@@ -613,7 +613,7 @@ class PromptPanel(
         val bg = SessionUiStyle.View.Prompt.bgColor(style)
         background = bg
         shell.background = bg
-        style.applyTranscriptToField(editor)
+        style.applyInputToField(editor)
         editor.getEditor(false)?.let(::chrome)
         editor.background = bg
         syncEditorHeight()
