@@ -33,6 +33,7 @@ This file is always loaded for work in this package. Detailed guidance lives in 
 - **All Swing creation, mutation, and access must happen on the EDT.** Never call RPC from the EDT. Annotate methods touching Swing or `SessionModel` with `@RequiresEdt`. Full annotation set and services/coroutine rules: `jetbrains-arch` skill.
 - Do not hardcode colors, fonts, sizes, insets, or borders — use theme-derived platform APIs. Do not use raw Swing where a JB component exists (`JLabel` → `JBLabel`, etc.). User-visible strings go in `*.properties` files. Full tables: `jetbrains-ui` skill.
 - Do not run `java -version` as a routine preflight — Gradle already fails clearly when Java is missing or incompatible.
+- **Gradle JVM is `#JAVA_HOME`, committed in tracked `.idea/gradle.xml` — never pin a machine-specific JDK name into that file.** Git operations (checkout, merge, stash) reset it and the IDE's Gradle JVM setting silently reverts; make `JAVA_HOME` resolve in the *IDE process* instead. `sdk use java 21-tem` only exports it to terminals that source SDKMAN init — a desktop-launched IDE never reads `.bashrc`. Expose it to the GUI session (e.g. `~/.config/environment.d/50-java-home.conf` with `JAVA_HOME=<sdkman candidates>/current`, applied at next login via systemd user environment) and restart the IDE.
 - Do not move, delete, or recreate JetBrains release tags (`jetbrains/v*`) casually. Release process: `/release-jetbrains` command.
 
 ## Reuse First — Common Code Index
@@ -69,10 +70,19 @@ Full lifecycle rules, anti-patterns, and required stress/leak tests for streamin
 | Task | Command (from `packages/kilo-jetbrains/`) |
 |---|---|
 | Typecheck | `bun run typecheck` or `./gradlew typecheck` |
-| Test | `./gradlew test` |
+| Targeted test (default while iterating) | `./gradlew :frontend:test --tests 'ai.kilocode.pkg.ClassName'` (same for `:backend:test`) |
+| Full test suite (once, before finishing) | `./gradlew test` |
 | Full build | `bun run build` (`./gradlew buildPlugin`) |
 | Run split-mode sandbox | `./gradlew --no-configuration-cache runIdeSplitMode` |
 | Marketplace build | `script/build-version.sh <version>` |
+
+**Running tests fast and reliably** (mandatory pattern — the full suite takes many minutes and repeatedly stalls agent sessions on tool timeouts):
+
+1. While iterating, always run only the touched test classes with `--tests` filtering (the "Targeted test" row). One class finishes in well under a minute. Example: `./gradlew :frontend:test --tests 'ai.kilocode.client.settings.providers.ProvidersSettingsUiTest'`.
+2. Never wait on a single blocking tool call for Gradle test output: the call can be hard-killed at its fixed timeout and the run appears hung. Instead start the run detached and poll the log:
+   `rm -f /tmp/kilo/jb-test.log && (./gradlew test > /tmp/kilo/jb-test.log 2>&1 &)` then poll `grep -qE 'BUILD (SUCCESSFUL|FAILED)' /tmp/kilo/jb-test.log && tail -30 /tmp/kilo/jb-test.log`.
+3. Run the full `./gradlew test` only once at the end of a change, always via the detached pattern from step 2.
+4. Run Gradle from the package directory (`workdir` or `./gradlew` there); if tool parameters are unreliable, `packages/kilo-jetbrains/gradlew -p packages/kilo-jetbrains <task>` from the repo root works identically.
 
 Full build/run/debug workflow, sandbox recovery, dev storage isolation, CLI pin modes: `jetbrains-dev` skill.
 
