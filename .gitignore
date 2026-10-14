@@ -76,6 +76,7 @@ packages/*/.kilo/tui.jsonc
 # Test Artifacts
 packages/app/.artifacts/
 packages/opencode/.artifacts/
+*.hprof
 
 .backlog
 .backlog/*
