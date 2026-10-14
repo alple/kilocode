@@ -124,6 +124,15 @@ data class CustomProviderSaveDto(
 )
 
 @Serializable
+data class ProviderCloneSaveDto(
+    val directory: String,
+    val id: String,
+    val cloneOf: String,
+    val name: String,
+    val apiKey: String? = null,
+)
+
+@Serializable
 data class CustomModelDto(
     val id: String,
     val name: String = id,
@@ -152,6 +161,7 @@ data class CustomProviderConfigDto(
     val id: String,
     val name: String? = null,
     val npm: String? = null,
+    val cloneOf: String? = null,
     val env: List<String> = emptyList(),
     val options: Map<String, String> = emptyMap(),
     val headers: Map<String, String> = emptyMap(),

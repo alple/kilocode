@@ -8,6 +8,7 @@ import ai.kilocode.rpc.dto.CustomModelFetchDto
 import ai.kilocode.rpc.dto.CustomModelFetchResultDto
 import ai.kilocode.rpc.dto.CustomProviderSaveDto
 import ai.kilocode.rpc.dto.ProviderActionResultDto
+import ai.kilocode.rpc.dto.ProviderCloneSaveDto
 import ai.kilocode.rpc.dto.ProviderConnectDto
 import ai.kilocode.rpc.dto.ProviderDisconnectDto
 import ai.kilocode.rpc.dto.ProviderEnableDto
@@ -34,6 +35,7 @@ internal class KiloProviderRpcApiImpl : KiloProviderRpcApi {
     override suspend fun disconnect(input: ProviderDisconnectDto): ProviderActionResultDto = logged("disconnect provider=${input.providerId}") { manager.disconnect(input) }
     override suspend fun enable(input: ProviderEnableDto): ProviderActionResultDto = logged("enable provider=${input.providerId}") { manager.enable(input) }
     override suspend fun saveCustom(input: CustomProviderSaveDto): ProviderActionResultDto = logged("save custom provider=${input.id}") { manager.saveCustom(input) }
+    override suspend fun saveClone(input: ProviderCloneSaveDto): ProviderActionResultDto = logged("save clone provider=${input.id}") { manager.saveClone(input) }
     override suspend fun fetchCustomModels(input: CustomModelFetchDto): CustomModelFetchResultDto = logged("fetch custom models") { manager.fetch(input) }
 
     private suspend fun <T> logged(name: String, block: suspend () -> T): T {

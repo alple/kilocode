@@ -78,6 +78,9 @@ val generateOpenApiSpec = tasks.register<GenerateOpenApiSpecTask>("generateOpenA
 val buildRepoCli = tasks.register<Exec>("buildRepoCli") {
     description = "Build the local repo CLI for the current platform"
     workingDir = repoRootDir.asFile
+    // Local Linux builds cannot compile the bundled Bubblewrap helper without Zig; match
+    // script/local-bin.ts and the nix build, which both skip it.
+    environment("KILO_SKIP_BUNDLED_BWRAP", "1")
     commandLine(bunPathProvider.get(), "run", "script/build.ts", "--single", "--skip-install")
 }
 
@@ -102,7 +105,16 @@ val stageRepoCli = tasks.register<StageRepoCliTask>("stageRepoCli") {
     val bin = repoRootDir.dir("dist/@kilocode/cli-${platform()}/bin")
     this.bin.set(bin)
     archive.set(generatedCli.map { it.file("kilo-cli.zip") })
-    outputs.upToDateWhen { false }
+    // Staging zips the dist tree; never let it race a concurrent rebuild of that tree.
+    mustRunAfter(buildRepoCli)
+}
+
+val checkRepoCliFresh = tasks.register<CheckRepoCliFreshTask>("checkRepoCliFresh") {
+    description = "Fail when the staged repo CLI is older than the source it bundles"
+    bin.set(repoRootDir.dir("dist/@kilocode/cli-${platform()}/bin"))
+    workspaceRoot.set(rootProject.layout.projectDirectory.dir("../.."))
+    // In a combined "rebuild then check" invocation the check must observe the fresh binary.
+    mustRunAfter(buildRepoCli)
 }
 
 val stageBundledCli = tasks.register<StageBundledCliTask>("stageBundledCli") {

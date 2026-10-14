@@ -6,6 +6,7 @@ import ai.kilocode.rpc.dto.CustomModelFetchDto
 import ai.kilocode.rpc.dto.CustomModelFetchResultDto
 import ai.kilocode.rpc.dto.CustomProviderSaveDto
 import ai.kilocode.rpc.dto.ProviderActionResultDto
+import ai.kilocode.rpc.dto.ProviderCloneSaveDto
 import ai.kilocode.rpc.dto.ProviderConnectDto
 import ai.kilocode.rpc.dto.ProviderDisconnectDto
 import ai.kilocode.rpc.dto.ProviderEnableDto
@@ -33,5 +34,6 @@ interface KiloProviderRpcApi : RemoteApi<Unit> {
     suspend fun disconnect(input: ProviderDisconnectDto): ProviderActionResultDto
     suspend fun enable(input: ProviderEnableDto): ProviderActionResultDto
     suspend fun saveCustom(input: CustomProviderSaveDto): ProviderActionResultDto
+    suspend fun saveClone(input: ProviderCloneSaveDto): ProviderActionResultDto
     suspend fun fetchCustomModels(input: CustomModelFetchDto): CustomModelFetchResultDto
 }

@@ -23,6 +23,7 @@ import ai.kilocode.rpc.dto.CustomProviderSaveDto
 import ai.kilocode.rpc.dto.ProviderActionResultDto
 import ai.kilocode.rpc.dto.ProviderAuthMethodDto
 import ai.kilocode.rpc.dto.ProviderAuthOptionDto
+import ai.kilocode.rpc.dto.ProviderCloneSaveDto
 import ai.kilocode.rpc.dto.ProviderConnectDto
 import ai.kilocode.rpc.dto.ProviderDisconnectDto
 import ai.kilocode.rpc.dto.ProviderEnableDto
@@ -86,6 +87,26 @@ private fun oauthCode(text: String?): String? = text?.let { OAUTH_CODE_RE.find(i
 private const val CUSTOM_MODEL_POPUP_WIDTH = 320
 private const val CUSTOM_MODEL_POPUP_MAX_ROWS = 10
 
+// CLONE_SOURCE lives in ProviderListRows.kt; the id pattern stays dialog-local.
+private val CLONE_ID_PATTERN = Regex("^[a-z0-9][a-z0-9_-]*$")
+
+internal fun cloneId(name: String): String =
+    name.trim().lowercase().replace(Regex("[^a-z0-9]+"), "-").trim('-')
+
+// Proposed values for duplicating a provider: "<source> copy" with an id derived from it,
+// suffixed until it collides with no existing provider id or config entry.
+internal fun clonePrefill(sourceName: String, takenIds: Set<String>): Pair<String, String> {
+    val name = KiloBundle.message("settings.providers.cloneDuplicateName", sourceName)
+    val base = cloneId(name)
+    var id = base
+    var n = 2
+    while (id in takenIds) {
+        id = "$base-$n"
+        n++
+    }
+    return name to id
+}
+
 // Inline error text for a custom-provider save. A blank result with the provider missing from the
 // returned list means the CLI dropped it (e.g. no usable models), so surface that instead of closing silently.
 internal fun customSaveError(id: String, result: ProviderActionResultDto): String? {
@@ -132,13 +153,14 @@ internal class ProvidersSettingsUi(
         AllIcons.General.Add,
         { !busy },
     ) { custom() }
+
     private val refresh = SettingsToolbarAction(
         KiloBundle.message("settings.providers.refresh"),
         KiloBundle.message("settings.providers.refresh.description"),
         AllIcons.Actions.Refresh,
         { !busy },
     ) { reload() }
-    private val view = ProvidersContent(::connect, ::oauth, ::disconnect, ::enable, ::edit)
+    private val view = ProvidersContent(::connect, ::oauth, ::disconnect, ::enable, ::edit, ::duplicateProvider)
     private val search = SearchTextField(false).apply {
         textEditor.emptyText.text = KiloBundle.message("settings.providers.search")
     }
@@ -289,6 +311,32 @@ internal class ProvidersSettingsUi(
             { service<KiloProviderService>().fetchCustomModels(it) },
             { service<KiloProviderService>().saveCustom(it) },
             existing,
+        )
+        if (!dialog.showAndGet()) return
+        val next = dialog.outcome ?: return
+        state = next
+        view.update(next, dialog.savedId)
+        clearProgress()
+    }
+
+    @RequiresEdt
+    private fun duplicateProvider(source: ProviderSettingsProviderDto) {
+        checkEdt()
+        openCloneDialog(clonePrefill(source.name, state.providers.map { it.id }.toSet() + state.config.keys))
+    }
+
+    // The dialog performs the save itself so failures can be shown inline and the user can
+    // correct their input without re-typing. It only closes on a verified success.
+    @RequiresEdt
+    private fun openCloneDialog(prefill: Pair<String, String>? = null) {
+        checkEdt()
+        val dialog = ProviderCloneDialog(
+            cs,
+            directory,
+            state.providers.map { it.id }.toSet() + state.config.keys,
+            { service<KiloProviderService>().saveClone(it) },
+            prefill?.first.orEmpty(),
+            prefill?.second.orEmpty(),
         )
         if (!dialog.showAndGet()) return
         val next = dialog.outcome ?: return
@@ -491,6 +539,7 @@ internal class ProvidersContent(
     private val disconnect: (ProviderSettingsProviderDto) -> Unit,
     private val enable: (ProviderSettingsProviderDto) -> Unit,
     private val edit: (ProviderSettingsProviderDto) -> Unit,
+    private val duplicate: (ProviderSettingsProviderDto) -> Unit,
 ) : BaseContentPanel() {
     private val view = ActiveListView(KiloBundle.message("settings.providers.noMatches"), ActiveListConfig.Preferred) { key, id ->
         activate(key, id)
@@ -553,6 +602,7 @@ internal class ProvidersContent(
             ProviderListAction.DELETE -> disconnect(row.provider)
             ProviderListAction.ENABLE -> enable(row.provider)
             ProviderListAction.EDIT -> edit(row.provider)
+            ProviderListAction.DUPLICATE -> duplicate(row.provider)
         }
     }
 
@@ -993,5 +1043,171 @@ internal class CustomProviderDialog(
 
     private fun checkEdt() {
         check(ApplicationManager.getApplication().isDispatchThread) { "Custom provider dialog updates must run on EDT" }
+    }
+}
+
+internal class ProviderCloneDialog(
+    private val cs: CoroutineScope,
+    private val directory: String,
+    private val takenIds: Set<String>,
+    private val save: suspend (ProviderCloneSaveDto) -> ProviderActionResultDto,
+    prefillName: String = "",
+    prefillId: String = "",
+) : DialogWrapper(true) {
+    private val name = JBTextField().apply { text = prefillName }
+    private val id = JBTextField().apply { text = prefillId }
+    private val key = JBPasswordField().apply { columns = 50 }
+    private var idEdited = false
+    private var saving = false
+    private var active = true
+    private var actionError: String? = null
+
+    // Set once the save succeeds; the panel reads it after the dialog closes to update the list.
+    var outcome: ProviderSettingsDto? = null
+        private set
+
+    // Id of the provider the save persisted; used to select the row after the dialog closes.
+    var savedId: String? = null
+        private set
+
+    init {
+        title = KiloBundle.message("settings.providers.cloneTitle")
+        setOKButtonText(KiloBundle.message("settings.providers.cloneAdd"))
+        init()
+        initValidation()
+        name.document.addDocumentListener(object : DocumentAdapter() {
+            override fun textChanged(e: DocumentEvent) {
+                if (!idEdited) id.text = cloneId(name.text)
+            }
+        })
+        id.document.addDocumentListener(object : DocumentAdapter() {
+            override fun textChanged(e: DocumentEvent) {
+                idEdited = id.text != cloneId(name.text)
+            }
+        })
+        syncActions()
+    }
+
+    // The clone id derives from the name until the user edits it; typing the derived value by
+    // hand keeps derivation active so later name edits keep flowing through.
+
+    @RequiresEdt
+    fun key(): String = String(key.password)
+
+    @RequiresEdt
+    private fun input() = ProviderCloneSaveDto(
+        directory = directory,
+        id = id.text.trim(),
+        cloneOf = CLONE_SOURCE,
+        name = name.text.trim(),
+        apiKey = key().takeIf { it.isNotBlank() },
+    )
+
+    override fun getPreferredFocusedComponent(): JComponent = name
+
+    override fun createCenterPanel(): JComponent {
+        val panel = Stack.vertical(UiStyle.Gap.sm())
+        panel.next(
+            JBLabel(KiloBundle.message("settings.providers.cloneDescription")).apply {
+                foreground = UIUtil.getContextHelpForeground()
+            },
+        )
+        panel.next(JBLabel(KiloBundle.message("settings.providers.cloneName")))
+        panel.next(name)
+        panel.next(JBLabel(KiloBundle.message("settings.providers.cloneId")))
+        panel.next(id)
+        panel.next(
+            JBLabel(KiloBundle.message("settings.providers.cloneIdHint")).apply {
+                foreground = UIUtil.getContextHelpForeground()
+            },
+        )
+        panel.next(JBLabel(KiloBundle.message("settings.providers.apiKey")))
+        panel.next(key)
+        return panel
+    }
+
+    override fun doValidate(): ValidationInfo? {
+        if (name.text.isBlank()) return ValidationInfo(KiloBundle.message("settings.providers.cloneNameRequired"), name)
+        val chosen = id.text.trim()
+        if (chosen.isEmpty()) return ValidationInfo(KiloBundle.message("settings.providers.cloneIdRequired"), id)
+        if (!CLONE_ID_PATTERN.matches(chosen)) {
+            return ValidationInfo(KiloBundle.message("settings.providers.cloneIdInvalid"), id)
+        }
+        if (chosen in takenIds) return ValidationInfo(KiloBundle.message("settings.providers.cloneIdTaken"), id)
+        actionError?.let { return ValidationInfo(it) }
+        if (key().isBlank()) return ValidationInfo(KiloBundle.message("settings.providers.apiKeyRequired"), key)
+        return null
+    }
+
+    override fun doOKAction() {
+        checkEdt()
+        ProvidersSettingsUi.LOG.info("provider clone add: clicked saving=$saving id='${id.text.trim()}'")
+        if (saving) {
+            ProvidersSettingsUi.LOG.info("provider clone add: ignored, save already in progress")
+            return
+        }
+        actionError = null
+        setErrorText(null)
+        val invalid = doValidate()
+        if (invalid != null) {
+            ProvidersSettingsUi.LOG.info("provider clone add: blocked by validation: ${invalid.message}")
+            return
+        }
+        val input = input()
+        ProvidersSettingsUi.LOG.info("provider clone add: saving id='${input.id}' cloneOf='${input.cloneOf}' name='${input.name}' hasKey=${input.apiKey != null}")
+        saving = true
+        syncActions()
+        cs.launch {
+            val result = try {
+                save(input)
+            } catch (e: CancellationException) {
+                ProvidersSettingsUi.LOG.info("provider clone add: save cancelled id='${input.id}'")
+                throw e
+            } catch (e: Exception) {
+                ProvidersSettingsUi.LOG.warn("provider clone save failed id='${input.id}'", e)
+                withContext(edt) { fail("${e::class.simpleName}: ${e.message}") }
+                return@launch
+            }
+            withContext(edt) {
+                if (!active) {
+                    ProvidersSettingsUi.LOG.info("provider clone add: dialog no longer active, dropping result id='${input.id}'")
+                    return@withContext
+                }
+                val error = result.error
+                if (error != null) {
+                    ProvidersSettingsUi.LOG.warn("provider clone add: save reported error id='${input.id}': $error")
+                    fail(error)
+                    return@withContext
+                }
+                ProvidersSettingsUi.LOG.info("provider clone add: save succeeded id='${input.id}', closing dialog")
+                outcome = result.state
+                savedId = input.id
+                saving = false
+                syncActions()
+                close(OK_EXIT_CODE)
+            }
+        }
+    }
+
+    @RequiresEdt
+    private fun fail(text: String) {
+        if (!active) return
+        saving = false
+        actionError = text
+        setErrorText(text)
+        syncActions()
+    }
+
+    private fun syncActions() {
+        isOKActionEnabled = !saving
+    }
+
+    override fun dispose() {
+        active = false
+        super.dispose()
+    }
+
+    private fun checkEdt() {
+        check(ApplicationManager.getApplication().isDispatchThread) { "Provider clone dialog updates must run on EDT" }
     }
 }

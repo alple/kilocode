@@ -42,6 +42,7 @@ import {
   patchCustomLoaderResult,
   patchKiloProviderPrivacy,
   patchKiloProviderAuth,
+  patchKiloProviderClones,
   publicKiloProvider,
   kiloSmallModelPriority,
   hasKiloCredentials,
@@ -1746,6 +1747,7 @@ const layer = Layer.effect(
         }
         patchKiloProviderPrivacy(providers[ProviderV2.ID.make("kilo")], cfg) // kilocode_change
         patchKiloProviderAuth(providers[ProviderV2.ID.make("kilo")], cfg, auths["kilo"]) // kilocode_change
+        patchKiloProviderClones(providers, cfg) // kilocode_change
 
         const gitlab = ProviderV2.ID.make("gitlab")
         if (discoveryLoaders[gitlab] && providers[gitlab] && isProviderAllowed(gitlab)) {

@@ -2,7 +2,7 @@ import org.gradle.api.DefaultTask
 import org.gradle.api.GradleException
 import org.gradle.api.file.DirectoryProperty
 import org.gradle.api.file.RegularFileProperty
-import org.gradle.api.tasks.Internal
+import org.gradle.api.tasks.InputDirectory
 import org.gradle.api.tasks.OutputFile
 import org.gradle.api.tasks.TaskAction
 import java.io.File
@@ -10,7 +10,9 @@ import java.util.zip.ZipEntry
 import java.util.zip.ZipOutputStream
 
 abstract class StageRepoCliTask : DefaultTask() {
-    @get:Internal
+    // Declared as an input so unchanged CLI trees skip the re-zip: the archive's content stamp
+    // then stays stable across IDE runs and the backend skips re-extracting the binary.
+    @get:InputDirectory
     abstract val bin: DirectoryProperty
 
     @get:OutputFile

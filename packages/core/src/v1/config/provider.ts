@@ -130,5 +130,10 @@ export const Info = Schema.Struct({
     ),
   ),
   models: Schema.optional(Schema.Record(Schema.String, Schema.NullOr(Model))), // kilocode_change - allow null values so removed models can be deleted via stripNulls on save
+  // kilocode_change start
+  cloneOf: Schema.optional(Schema.String).annotate({
+    description: "Catalog provider id this entry clones its model catalog from",
+  }),
+  // kilocode_change end
 }).annotate({ identifier: "ProviderConfig" })
 export type Info = Schema.Schema.Type<typeof Info>

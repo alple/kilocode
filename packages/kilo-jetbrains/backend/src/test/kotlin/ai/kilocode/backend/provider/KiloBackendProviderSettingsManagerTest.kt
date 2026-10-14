@@ -8,6 +8,7 @@ import ai.kilocode.backend.testing.TestLog
 import ai.kilocode.rpc.dto.CustomModelDto
 import ai.kilocode.rpc.dto.CustomModelFetchDto
 import ai.kilocode.rpc.dto.CustomProviderSaveDto
+import ai.kilocode.rpc.dto.ProviderCloneSaveDto
 import ai.kilocode.rpc.dto.ProviderConnectDto
 import ai.kilocode.rpc.dto.ProviderDisconnectDto
 import ai.kilocode.rpc.dto.ProviderEnableDto
@@ -565,6 +566,115 @@ class KiloBackendProviderSettingsManagerTest {
         // Exactly one GET (the pre-check) + one PATCH (the recreate) + one GET (the trailing
         // reload) hit /global/config; a fourth request would mean a delete patch also fired.
         assertEquals(3, mock.requestCount("/global/config"))
+    }
+
+    @Test
+    fun `saving provider clone patches cloneOf entry and stores its own key`() = runBlocking {
+        mock.config = """{"disabled_providers":["openrouter-work","openrouter"]}"""
+        mock.providers = """{
+            "all":[{"id":"openrouter","name":"OpenRouter","models":{}}],
+            "default":{},
+            "connected":[],
+            "failed":[]
+        }""".trimIndent()
+        mock.providersAfterAuthPut = """{
+            "all":[{"id":"openrouter","name":"OpenRouter","models":{}}],
+            "default":{},
+            "connected":["openrouter-work"],
+            "failed":[]
+        }""".trimIndent()
+        val manager = manager()
+
+        mock.resetCounts()
+        val result = manager.saveClone(
+            ProviderCloneSaveDto("/test", "openrouter-work", "openrouter", "OpenRouter Work", "sk-test"),
+        )
+
+        assertNull(result.error)
+        assertContains(mock.lastConfigPatchBody.orEmpty(), "\"cloneOf\":\"openrouter\"")
+        assertContains(mock.lastConfigPatchBody.orEmpty(), "\"OpenRouter Work\"")
+        // The un-disable list drops the clone's own stale disable entry but keeps the others.
+        assertContains(mock.lastConfigPatchBody.orEmpty(), "\"disabled_providers\":[\"openrouter\"]")
+        assertContains(mock.lastAuthPutBody.orEmpty(), "\"key\":\"sk-test\"")
+        assertEquals(1, mock.requestCount("/auth/openrouter-work"))
+        assertEquals(listOf("openrouter-work"), result.state.connected)
+        assertEquals(1, mock.requestCount("/global/dispose"))
+    }
+
+    @Test
+    fun `saving provider clone without the base provider returns error and does not patch`() = runBlocking {
+        mock.providers = """{"all":[],"default":{},"connected":[],"failed":[]}"""
+        val manager = manager()
+
+        mock.resetCounts()
+        val result = manager.saveClone(
+            ProviderCloneSaveDto("/test", "openrouter-work", "openrouter", "OpenRouter Work", "sk-test"),
+        )
+
+        assertEquals("Clone source provider not found: openrouter.", result.error)
+        assertNull(mock.lastConfigPatchBody)
+        assertEquals(0, mock.requestCount("/global/dispose"))
+    }
+
+    @Test
+    fun `saving provider clone with a taken id returns error and does not patch`() = runBlocking {
+        mock.config = """{"provider":{"taken":{"name":"Taken"}}}"""
+        mock.providers = """{
+            "all":[{"id":"openrouter","name":"OpenRouter","models":{}}],
+            "default":{},
+            "connected":[],
+            "failed":[]
+        }""".trimIndent()
+        val manager = manager()
+
+        mock.resetCounts()
+        val result = manager.saveClone(
+            ProviderCloneSaveDto("/test", "taken", "openrouter", "Taken", "sk-test"),
+        )
+
+        assertEquals("A provider with this ID already exists.", result.error)
+        assertNull(mock.lastConfigPatchBody)
+        assertEquals(0, mock.requestCount("/global/dispose"))
+    }
+
+    @Test
+    fun `saving provider clone with an invalid id returns error and does not patch`() = runBlocking {
+        val manager = manager()
+
+        mock.resetCounts()
+        val result = manager.saveClone(
+            ProviderCloneSaveDto("/test", "OpenRouter Work", "openrouter", "OpenRouter Work", "sk-test"),
+        )
+
+        assertEquals("Provider ID must be lowercase letters, numbers, hyphens, or underscores.", result.error)
+        assertNull(mock.lastConfigPatchBody)
+        assertEquals(0, mock.requestCount("/global/dispose"))
+    }
+
+    @Test
+    fun `disconnecting a provider clone deletes the config entry and its key without disabling`() = runBlocking {
+        mock.providers = """{
+            "all":[
+                {"id":"openrouter","name":"OpenRouter","models":{}},
+                {"id":"openrouter-copy","name":"OpenRouter Copy","models":{},"source":"config"}
+            ],
+            "default":{},
+            "connected":["openrouter-copy"],
+            "failed":[]
+        }""".trimIndent()
+        mock.config = """{"provider":{"openrouter-copy":{"cloneOf":"openrouter","name":"OpenRouter Copy"}}}"""
+        val manager = manager()
+
+        mock.resetCounts()
+        val result = manager.disconnect(ProviderDisconnectDto("/test", "openrouter-copy"))
+
+        assertNull(result.error)
+        // The whole clone entry is deleted, not disabled: the catalog copy only exists while the
+        // entry does, so a disable would leave a half-removed instance behind.
+        assertContains(mock.lastConfigPatchBody.orEmpty(), "\"provider\":{\"openrouter-copy\":null}")
+        assertFalse(mock.lastConfigPatchBody.orEmpty().contains("disabled"))
+        assertEquals("/auth/openrouter-copy", mock.lastAuthDeletePath)
+        assertEquals(1, mock.requestCount("/global/dispose"))
     }
 
     @Test

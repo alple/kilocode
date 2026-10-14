@@ -22,6 +22,7 @@ import ai.kilocode.rpc.dto.CustomProviderSaveDto
 import ai.kilocode.rpc.dto.ModelDto
 import ai.kilocode.rpc.dto.ProviderActionResultDto
 import ai.kilocode.rpc.dto.ProviderAuthMethodDto
+import ai.kilocode.rpc.dto.ProviderCloneSaveDto
 import ai.kilocode.rpc.dto.ProviderDisconnectDto
 import ai.kilocode.rpc.dto.ProviderMetadataDto
 import ai.kilocode.rpc.dto.ProviderOAuthReadyDto
@@ -276,6 +277,159 @@ class ProvidersSettingsUiTest : BasePlatformTestCase() {
             assertTrue(dialog.isOKActionEnabled)
             dispose(dialog)
         }
+    }
+
+    fun `test clone dialog derives id from name until edited`() {
+        val cs = CoroutineScope(SupervisorJob())
+        scope = cs
+        val dialog = edt {
+            ProviderCloneDialog(cs, "/tmp", setOf("openrouter"), { ProviderActionResultDto(ProviderSettingsDto()) })
+        }
+
+        edt {
+            val fields = components(center(dialog)).filterIsInstance<JTextField>()
+            fields[0].text = "OpenRouter Work"
+            assertEquals("openrouter-work", fields[1].text)
+            fields[0].text = "OpenRouter Private!"
+            assertEquals("openrouter-private", fields[1].text)
+            fields[1].text = "openrouter-two"
+            fields[0].text = "OpenRouter Third"
+            assertEquals("openrouter-two", fields[1].text)
+            dispose(dialog)
+        }
+    }
+
+    fun `test clone dialog closes on save success and sends the typed key`() {
+        val cs = CoroutineScope(SupervisorJob())
+        scope = cs
+        val captured = mutableListOf<ProviderCloneSaveDto>()
+        val dialog = edt {
+            val dialog = ProviderCloneDialog(
+                cs,
+                "/tmp",
+                setOf("openrouter"),
+                { captured.add(it); ProviderActionResultDto(providerState(provider("openrouter", "OpenRouter"), provider("openrouter-work", "OpenRouter Work"))) },
+            )
+            val fields = components(center(dialog)).filterIsInstance<JTextField>()
+            fields[0].text = "OpenRouter Work"
+            fields[2].text = "sk-test"
+            submit(dialog)
+            dialog
+        }
+
+        flushUntil { edt { dialog.outcome != null } }
+
+        edt {
+            assertEquals("openrouter-work", dialog.savedId)
+            assertEquals(1, captured.size)
+            assertEquals("/tmp", captured[0].directory)
+            assertEquals("openrouter-work", captured[0].id)
+            assertEquals("openrouter", captured[0].cloneOf)
+            assertEquals("OpenRouter Work", captured[0].name)
+            assertEquals("sk-test", captured[0].apiKey)
+            assertTrue(dialog.isOKActionEnabled)
+            dispose(dialog)
+        }
+    }
+
+    fun `test clone dialog validation errors keep it open`() {
+        val cs = CoroutineScope(SupervisorJob())
+        scope = cs
+        val captured = mutableListOf<ProviderCloneSaveDto>()
+        val dialog = edt {
+            val dialog = ProviderCloneDialog(cs, "/tmp", setOf("openrouter"), { captured.add(it); ProviderActionResultDto(ProviderSettingsDto()) })
+            submit(dialog)
+            dialog
+        }
+
+        edt {
+            assertEquals(KiloBundle.message("settings.providers.cloneNameRequired"), validation(dialog))
+            assertTrue(captured.isEmpty())
+            val fields = components(center(dialog)).filterIsInstance<JTextField>()
+            fields[0].text = "OpenRouter"
+            fields[2].text = "sk-test"
+            assertEquals(KiloBundle.message("settings.providers.cloneIdTaken"), validation(dialog))
+            assertTrue(captured.isEmpty())
+            dispose(dialog)
+        }
+    }
+
+    fun `test clone dialog blocks an invalid id`() {
+        val cs = CoroutineScope(SupervisorJob())
+        scope = cs
+        val dialog = edt {
+            ProviderCloneDialog(cs, "/tmp", setOf("work"), { ProviderActionResultDto(ProviderSettingsDto()) })
+        }
+
+        edt {
+            val fields = components(center(dialog)).filterIsInstance<JTextField>()
+            fields[0].text = "Work"
+            fields[2].text = "sk-test"
+            assertEquals(KiloBundle.message("settings.providers.cloneIdTaken"), validation(dialog))
+            fields[1].text = "Bad ID"
+            assertEquals(KiloBundle.message("settings.providers.cloneIdInvalid"), validation(dialog))
+            fields[1].text = "private"
+            assertNull(validation(dialog))
+            dispose(dialog)
+        }
+    }
+
+    fun `test clone dialog opens prefilled from duplicate`() {
+        val cs = CoroutineScope(SupervisorJob())
+        scope = cs
+        val captured = mutableListOf<ProviderCloneSaveDto>()
+        val dialog = edt {
+            val dialog = ProviderCloneDialog(
+                cs,
+                "/tmp",
+                setOf("openrouter", "openrouter-copy"),
+                { captured.add(it); ProviderActionResultDto(providerState(provider("openrouter", "OpenRouter"))) },
+                "OpenRouter copy",
+                "openrouter-copy-2",
+            )
+            val fields = components(center(dialog)).filterIsInstance<JTextField>()
+            assertEquals("OpenRouter copy", fields[0].text)
+            assertEquals("openrouter-copy-2", fields[1].text)
+            fields[2].text = "sk-test"
+            submit(dialog)
+            dialog
+        }
+
+        flushUntil { edt { dialog.outcome != null } }
+
+        edt {
+            assertEquals("openrouter-copy-2", dialog.savedId)
+            assertEquals("openrouter-copy-2", captured[0].id)
+            assertEquals("OpenRouter copy", captured[0].name)
+            dispose(dialog)
+        }
+    }
+
+    fun `test openrouter rows offer duplicate beside their actions`() {
+        val unconfigured = ProviderSettingsDto(
+            providers = listOf(provider("openrouter", "OpenRouter"), provider("openai", "OpenAI")),
+            auth = mapOf(
+                "openrouter" to listOf(ProviderAuthMethodDto("api", "API key")),
+                "openai" to listOf(ProviderAuthMethodDto("api", "API key")),
+            ),
+        )
+        val rows = providerListRows(unconfigured, "")
+        assertEquals(listOf(ProviderListAction.CONNECT, ProviderListAction.DUPLICATE), rows.first { it.provider.id == "openrouter" }.actions)
+        assertEquals(listOf(ProviderListAction.CONNECT), rows.first { it.provider.id == "openai" }.actions)
+
+        val configured = ProviderSettingsDto(
+            providers = listOf(provider("openrouter", "OpenRouter")),
+            connected = listOf("openrouter"),
+        )
+        assertEquals(listOf(ProviderListAction.DUPLICATE, ProviderListAction.DISCONNECT), providerListRows(configured, "").single().actions)
+    }
+
+    fun `test clone prefill proposes unique copy name and id`() {
+        assertEquals("OpenRouter copy" to "openrouter-copy", clonePrefill("OpenRouter", setOf("openrouter")))
+        assertEquals(
+            "OpenRouter copy" to "openrouter-copy-2",
+            clonePrefill("OpenRouter", setOf("openrouter", "openrouter-copy")),
+        )
     }
 
     fun `test custom dialog edit prefill locks id and leaves key blank`() {
@@ -762,7 +916,7 @@ class ProvidersSettingsUiTest : BasePlatformTestCase() {
     fun `test edit callback fires instead of delete on primary`() {
         var edited: ProviderSettingsProviderDto? = null
         var deleted: ProviderSettingsProviderDto? = null
-        val content = edt { ProvidersContent({}, {}, { deleted = it }, {}, { edited = it }) }
+        val content = edt { ProvidersContent({}, {}, { deleted = it }, {}, { edited = it }, {}) }
         val state = ProviderSettingsDto(
             providers = listOf(provider("local-openai", "Local OpenAI", source = "custom")),
             config = mapOf("local-openai" to CustomProviderConfigDto("local-openai", npm = CUSTOM_PROVIDER_PACKAGE)),
@@ -1365,7 +1519,7 @@ class ProvidersSettingsUiTest : BasePlatformTestCase() {
         edt { assertTrue(rows(panel).isEmpty()) }
     }
 
-    private fun content() = edt { ProvidersContent({}, {}, {}, {}, {}) }
+    private fun content() = edt { ProvidersContent({}, {}, {}, {}, {}, {}) }
 
     private fun content(panel: ProvidersSettingsUi) = components(panel).filterIsInstance<ProvidersContent>().single()
 
@@ -1429,13 +1583,25 @@ class ProvidersSettingsUiTest : BasePlatformTestCase() {
         call(dialog, "dispose")
     }
 
+    private fun center(dialog: ProviderCloneDialog) = call(dialog, "createCenterPanel") as JComponent
+
+    private fun submit(dialog: ProviderCloneDialog) {
+        call(dialog, "doOKAction")
+    }
+
+    private fun validation(dialog: ProviderCloneDialog) = (call(dialog, "doValidate") as ValidationInfo?)?.message
+
+    private fun dispose(dialog: ProviderCloneDialog) {
+        call(dialog, "dispose")
+    }
+
     private fun CustomProviderDialog.okText(): String {
         val method = com.intellij.openapi.ui.DialogWrapper::class.java.getDeclaredMethod("getOKAction")
         method.isAccessible = true
         return (method.invoke(this) as javax.swing.Action).getValue(javax.swing.Action.NAME) as String
     }
 
-    private fun call(dialog: CustomProviderDialog, name: String): Any? {
+    private fun call(dialog: Any, name: String): Any? {
         val method = dialog.javaClass.getDeclaredMethod(name)
         method.isAccessible = true
         return method.invoke(dialog)

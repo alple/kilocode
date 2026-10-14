@@ -302,12 +302,21 @@ tasks.register("typecheck") {
 
 tasks.named<JavaExec>("runIde") {
     dependsOn(":backend:processResources")
+    if (!pinned) dependsOn(":backend:checkRepoCliFresh")
     jvmArgumentProviders += CommandLineArgumentProvider {
         listOf("-Dnosplash=true")
     }
 }
 
+// Repo CLI mode: refuse to launch or package the IDE with a CLI older than the source it bundles.
+// A stale CLI keeps working but misrepresents current source (it drops unknown config fields on
+// save), which is how a provider clone once lost its `cloneOf` field.
+if (!pinned) tasks.matching { it.name == "prepareSandbox" }.configureEach {
+    dependsOn(":backend:checkRepoCliFresh")
+}
+
 tasks.withType<RunIdeTask> {
+    if (!pinned) dependsOn(":backend:checkRepoCliFresh")
     val level = providers.gradleProperty("kilo.dev.log.level").orNull ?: "DEBUG"
     val content = providers.gradleProperty("kilo.dev.log.chat.content").orNull ?: "off"
     val preview = providers.gradleProperty("kilo.dev.log.chat.preview.max").orNull ?: "160"

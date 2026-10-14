@@ -98,7 +98,7 @@ export const providerHandlers = HttpApiBuilder.group(InstanceHttpApi, "provider"
       return {
         all: Object.values(validProviders).map((item) => ({
           ...Provider.toPublicInfo(item),
-          metadata: providerMetadata(item.id),
+          metadata: providerMetadata(item.id, config.provider?.[item.id]?.cloneOf),
         })), // kilocode_change
         default: defaults,
         connected: Object.keys(connected),

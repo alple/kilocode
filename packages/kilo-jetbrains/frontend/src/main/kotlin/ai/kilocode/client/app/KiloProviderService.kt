@@ -9,6 +9,7 @@ import ai.kilocode.rpc.dto.CustomModelFetchResultDto
 import ai.kilocode.rpc.dto.CustomProviderSaveDto
 import ai.kilocode.rpc.dto.LoadErrorDto
 import ai.kilocode.rpc.dto.ProviderActionResultDto
+import ai.kilocode.rpc.dto.ProviderCloneSaveDto
 import ai.kilocode.rpc.dto.ProviderConnectDto
 import ai.kilocode.rpc.dto.ProviderDisconnectDto
 import ai.kilocode.rpc.dto.ProviderEnableDto
@@ -65,6 +66,8 @@ class KiloProviderService internal constructor(
     suspend fun disconnect(input: ProviderDisconnectDto): ProviderActionResultDto = action(input.directory) { disconnect(input) }
     suspend fun enable(input: ProviderEnableDto): ProviderActionResultDto = action(input.directory) { enable(input) }
     suspend fun saveCustom(input: CustomProviderSaveDto): ProviderActionResultDto = action(input.directory) { saveCustom(input) }
+
+    suspend fun saveClone(input: ProviderCloneSaveDto): ProviderActionResultDto = action(input.directory) { saveClone(input) }
     suspend fun fetchCustomModels(input: CustomModelFetchDto): CustomModelFetchResultDto = call("fetch custom models") { fetchCustomModels(input) }
 
     private suspend fun action(directory: String, timeoutMs: Long = RPC_TIMEOUT_MS, block: suspend KiloProviderRpcApi.() -> ProviderActionResultDto): ProviderActionResultDto {

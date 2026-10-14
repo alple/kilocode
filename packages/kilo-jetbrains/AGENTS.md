@@ -76,6 +76,16 @@ Full lifecycle rules, anti-patterns, and required stress/leak tests for streamin
 | Run split-mode sandbox | `./gradlew --no-configuration-cache runIdeSplitMode` |
 | Marketplace build | `script/build-version.sh <version>` |
 
+**Repo CLI freshness**: in repo CLI mode (`kilo.cli.pinned=false`) every `runIde*` task and `prepareSandbox` runs `:backend:checkRepoCliFresh` — it fails when the staged CLI is older than the newest watched CLI source, instead of silently shipping a stale binary. After changing `packages/opencode/`, run `bun .kilo/skills/jetbrains-cli-pin/script/cli-pin.ts regen` (repo root) or `./gradlew :backend:buildRepoCli` before launching the IDE. Git stash/checkout/merge bumps file mtimes and can trigger the guard with unchanged content — rebuilding is the intended safe resolution.
+
+## Gotchas (learned the hard way, 2026-10-14 provider-clone work)
+
+- **A config field must exist in the CLI's runtime schema, not just the type.** A type-only addition is silently stripped by the CLI's config PATCH validation: the save "succeeds", the entry loses the field, and behavior quietly degrades (a provider clone lost `cloneOf` and turned invisible while its API key was still stored). New config fields need the runtime schema (`packages/core/src/v1/config/provider.ts`), a CLI test for the PATCH path, and a read-path test.
+- **The CLI that reaches the IDE is a pipeline, not one artifact**: `packages/opencode` source → dist binary (`buildRepoCli`) → `kilo-cli.zip` (`stageRepoCli`) → extracted copy (`KiloRepoCli`, previously keyed by plugin version only, so dev rebuilds never reached the runtime). Every hop can go stale independently. The freshness guard plus mtime-based re-extraction now close the loop; when IDE behavior differs from a fresh `kilo serve`, compare binary mtimes along the whole chain before debugging UI code.
+- **"A provider with this ID already exists" means the config entry exists even when the provider list does not show it** — collision checks read config keys, which are visible to a CLI that cannot expand the entry. Check the config file (dev: `.kilo-dev/config/kilo/kilo.jsonc`) before assuming a UI bug.
+- **A production/pinned plugin build bundles the *released* CLI, not your local one.** Until a CLI release contains a feature, propagate it via a lux build (`script/build-version.sh <base>-lux --skip-signing --skip-verification`), which is the one mode allowed to bundle the local repo CLI and installs side-by-side with the published plugin.
+- **Test plugin work through `Run IDE (Split Mode)`, not an installed plugin in your daily IDE** — the installed build and its CLI extraction (`~/.cache/JetBrains/<ide>/kilo/repo-cli/<version>`) can be days behind the repo.
+
 **Running tests fast and reliably** (mandatory pattern — the full suite takes many minutes and repeatedly stalls agent sessions on tool timeouts):
 
 1. While iterating, always run only the touched test classes with `--tests` filtering (the "Targeted test" row). One class finishes in well under a minute. Example: `./gradlew :frontend:test --tests 'ai.kilocode.client.settings.providers.ProvidersSettingsUiTest'`.

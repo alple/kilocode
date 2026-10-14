@@ -40,6 +40,34 @@ class KiloRepoCliTest {
     }
 
     @Test
+    fun `re-extracts when the archive is newer and skips when it matches`() = runBlocking {
+        val src = File(dir.parentFile, "kilo-cli-src").apply { mkdirs() }
+        val zip = File(src, "kilo-cli.zip")
+        fun writeZip(content: String) {
+            zip.delete()
+            zip.writeBytes(archive(content))
+        }
+        writeZip("#!/bin/old\n")
+        val cli = KiloRepoCli.extract(false, dir, archive = zip) { ByteArrayInputStream(zip.readBytes()) }
+
+        assertEquals("#!/bin/old\n", cli.readText())
+        val marker = File(dir, "marker")
+        marker.writeText("keep")
+
+        // Same archive file, unchanged: the skip path must leave the extracted tree untouched.
+        val cached = KiloRepoCli.extract(false, dir, archive = zip) { ByteArrayInputStream(archive("#!/bin/new\n")) }
+        assertEquals("#!/bin/old\n", cached.readText())
+        assertTrue(marker.isFile)
+
+        // A newer archive (a rebuilt CLI) must trigger re-extraction even without force.
+        writeZip("#!/bin/new\n")
+        val refreshed = KiloRepoCli.extract(false, dir, archive = zip) { ByteArrayInputStream(zip.readBytes()) }
+        assertEquals("#!/bin/new\n", refreshed.readText())
+        assertFalse(marker.isFile)
+        assertContains(File(dir, ".complete").readText(), "archive")
+    }
+
+    @Test
     fun `extracts only current platform from multi platform archive`() = runBlocking {
         val platform = KiloCliPlatform.current()
         val other = if (platform == "windows-x64") "darwin-arm64" else "windows-x64"

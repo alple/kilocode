@@ -8,6 +8,7 @@ import kotlinx.coroutines.withContext
 import java.io.File
 import java.io.InputStream
 import java.io.OutputStream
+import java.net.URLDecoder
 import java.util.zip.ZipInputStream
 
 object KiloRepoCli {
@@ -16,26 +17,45 @@ object KiloRepoCli {
 
     fun available(): Boolean = KiloRepoCli::class.java.classLoader.getResource(ARCHIVE) != null
 
-    suspend fun extract(force: Boolean): File = extract(
-        force = force,
-        root = File(PathManager.getSystemPath(), "kilo/repo-cli/${KiloProps.cliVersion()}"),
-        cleanup = true,
-        source = {
-            KiloRepoCli::class.java.classLoader.getResourceAsStream(ARCHIVE)
-                ?: throw IllegalStateException("kilo-cli.zip resource not found; rebuild with bundled CLI resources")
-        },
-    )
+    suspend fun extract(force: Boolean): File {
+        val archive = archiveFile()
+        return extract(
+            force = force,
+            root = File(PathManager.getSystemPath(), "kilo/repo-cli/${KiloProps.cliVersion()}"),
+            cleanup = true,
+            archive = archive,
+            source = {
+                KiloRepoCli::class.java.classLoader.getResourceAsStream(ARCHIVE)
+                    ?: throw IllegalStateException("kilo-cli.zip resource not found; rebuild with bundled CLI resources")
+            },
+        )
+    }
+
+    // The archive as a plain file, when resolvable: the zip itself on a file classpath (dev runs)
+    // or the containing plugin jar for a packed jar entry. Null (unknown protocol) keeps the
+    // legacy extract-once behavior instead of re-extracting on every start.
+    internal fun archiveFile(): File? = runCatching {
+        val url = KiloRepoCli::class.java.classLoader.getResource(ARCHIVE) ?: return@runCatching null
+        when (url.protocol) {
+            "file" -> File(url.toURI())
+            "jar" -> File(URLDecoder.decode(url.path.substringBeforeLast('!').removePrefix("file:"), Charsets.UTF_8))
+            else -> null
+        }
+    }.getOrNull()
 
     internal suspend fun extract(
         force: Boolean,
         root: File,
         cleanup: Boolean = false,
+        archive: File? = null,
         source: () -> InputStream,
     ): File = withContext(Dispatchers.IO) {
         val platform = KiloCliPlatform.current()
         val exe = File(root, "$platform/bin/${KiloCliPlatform.exe()}")
         val done = File(root, ".complete")
-        if (!force && done.isFile && exe.isFile) {
+        // A rebuilt CLI produces a new archive even at the same plugin version, and the extracted
+        // copy must follow: skip only when the extracted binary is at least as new as the archive.
+        if (!force && done.isFile && exe.isFile && (archive == null || exe.lastModified() >= archive.lastModified())) {
             log.info("Bundled Kilo CLI ${KiloProps.cliVersion()} ($platform) already extracted at ${exe.absolutePath}; skipping extraction")
             if (!SystemInfo.isWindows) exe.setExecutable(true)
             if (cleanup) prune(root)
@@ -63,7 +83,7 @@ object KiloRepoCli {
 
         if (!exe.isFile) throw IllegalStateException("Bundled CLI archive did not contain $platform/bin/${KiloCliPlatform.exe()}")
         if (!SystemInfo.isWindows) exe.setExecutable(true)
-        done.writeText("ok\n")
+        done.writeText(archive?.let { "archive ${it.lastModified()}" } ?: "ok")
         if (cleanup) prune(root)
         return@withContext exe
     }

@@ -30,12 +30,14 @@ function key(id: string) {
   return id
 }
 
-export function providerMetadata(id: string): ProviderMetadata {
+export function providerMetadata(id: string, cloneOf?: string): ProviderMetadata {
   const name = key(id)
   const note = notes[name]
+  const base = cloneOf ? key(cloneOf) : undefined
+  const icon = icons.has(name as IconName) ? name : base && icons.has(base as IconName) ? base : "synthetic"
   return {
     noteKey: note,
-    icon: icons.has(name as IconName) ? name : "synthetic",
+    icon,
     priority: priority.get(name),
   }
 }

@@ -49,7 +49,8 @@ export function kiloModels(input: {
   fetched: Record<string, Model>
   fallback: Record<string, Model> | undefined
 }): Record<string, Model> {
-  const raw = !input.valid || input.org || Object.keys(input.fetched).length > 0 ? input.fetched : (input.fallback ?? {})
+  const raw =
+    !input.valid || input.org || Object.keys(input.fetched).length > 0 ? input.fetched : (input.fallback ?? {})
   if (input.creds !== undefined) return raw
   return Object.fromEntries(
     Object.entries(raw).map(([id, model]) => [
@@ -57,6 +58,35 @@ export function kiloModels(input: {
       model.recommendedIndex === undefined ? model : { ...model, recommendedIndex: undefined },
     ]),
   )
+}
+
+// Model ids the shared provider loader prunes for OpenRouter-family providers; clones carry the
+// same pruning so they never expose the invalid alias models.
+const CLONE_PRUNED_MODELS = new Set(["gpt-5-chat-latest", "openai/gpt-5-chat"])
+
+/**
+ * Expands config provider entries carrying `cloneOf` into full catalog entries copied from the
+ * base provider, so a second OpenRouter instance gets the whole model catalog. Clones inherit
+ * api/npm/models but never the base env vars — they are authenticated only by their own stored
+ * key. The base entry is never mutated; clone models are deep-copied because downstream loaders
+ * mutate them per entry.
+ */
+export function expandClones(cfg: Config.Info, providers: Record<string, Core.Provider>) {
+  for (const [id, entry] of Object.entries(cfg.provider ?? {})) {
+    const base = entry?.cloneOf
+    if (!base || base === id) continue
+    const source = providers[base]
+    if (!source || providers[id]) continue
+    providers[id] = {
+      ...source,
+      id,
+      name: entry.name ?? source.name,
+      env: [],
+      models: structuredClone(
+        Object.fromEntries(Object.entries(source.models).filter(([modelID]) => !CLONE_PRUNED_MODELS.has(modelID))),
+      ),
+    }
+  }
 }
 
 export const layer: Layer.Layer<Service, never, Core.Service | Config.Service | Auth.Service | ModelCache.Service> =
@@ -74,6 +104,7 @@ export const layer: Layer.Layer<Service, never, Core.Service | Config.Service | 
         delete providers.kilo
 
         const cfg = yield* config.get()
+        expandClones(cfg, providers)
         const disabled = new Set(cfg.disabled_providers ?? [])
         const enabled = cfg.enabled_providers ? new Set(cfg.enabled_providers) : undefined
         const allowed = (!enabled || enabled.has("kilo")) && !disabled.has("kilo")

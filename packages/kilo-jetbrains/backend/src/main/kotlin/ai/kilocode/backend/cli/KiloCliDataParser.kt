@@ -597,6 +597,7 @@ object KiloCliDataParser {
                 id = id,
                 name = item.str("name"),
                 npm = item.str("npm"),
+                cloneOf = item.str("cloneOf"),
                 env = item["env"]?.jsonArray?.mapNotNull { it.jsonPrimitive.contentOrNull } ?: emptyList(),
                 options = item["options"].obj()?.entries?.mapNotNull { (key, value) -> value.scalar()?.let { key to it } }?.toMap() ?: emptyMap(),
                 headers = item["headers"].obj()?.entries?.mapNotNull { (key, value) -> value.scalar()?.let { key to it } }?.toMap() ?: emptyMap(),
@@ -1229,6 +1230,25 @@ object KiloCliDataParser {
     fun buildDisabledProviderPatch(ids: List<String>): String {
         val arr = JsonArray(ids.distinct().sorted().map { JsonPrimitive(it) })
         return json.encodeToString(JsonObject.serializer(), JsonObject(mapOf("disabled_providers" to arr)))
+    }
+
+    /**
+     * Config patch creating a provider clone: a config entry pointing at a catalog provider via
+     * `cloneOf`. The CLI expands the clone into a full provider with the base catalog's models;
+     * the entry's own stored key authenticates only this id. [disabledProviderIds] un-disables
+     * the clone id in the same patch so a stale disable entry cannot hide it.
+     */
+    fun buildProviderClonePatch(id: String, cloneOf: String, name: String, disabledProviderIds: List<String>): String {
+        val root = buildJsonObject {
+            put("provider", buildJsonObject {
+                put(id, buildJsonObject {
+                    put("cloneOf", cloneOf)
+                    put("name", name)
+                })
+            })
+            put("disabled_providers", JsonArray(disabledProviderIds.distinct().sorted().map { JsonPrimitive(it) }))
+        }
+        return json.encodeToString(JsonObject.serializer(), root)
     }
 
     /**

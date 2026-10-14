@@ -5,6 +5,7 @@ import ai.kilocode.rpc.dto.CustomModelFetchDto
 import ai.kilocode.rpc.dto.CustomModelFetchResultDto
 import ai.kilocode.rpc.dto.CustomProviderSaveDto
 import ai.kilocode.rpc.dto.ProviderActionResultDto
+import ai.kilocode.rpc.dto.ProviderCloneSaveDto
 import ai.kilocode.rpc.dto.ProviderConnectDto
 import ai.kilocode.rpc.dto.ProviderDisconnectDto
 import ai.kilocode.rpc.dto.ProviderEnableDto
@@ -22,6 +23,7 @@ class FakeProviderRpcApi : KiloProviderRpcApi {
     val disconnects = mutableListOf<ProviderDisconnectDto>()
     val enables = mutableListOf<ProviderEnableDto>()
     val custom = mutableListOf<CustomProviderSaveDto>()
+    val clones = mutableListOf<ProviderCloneSaveDto>()
     val authorizes = mutableListOf<ProviderOAuthAuthorizeDto>()
     val callbacks = mutableListOf<ProviderOAuthCallbackDto>()
     val authorizesReady = ArrayDeque<CompletableDeferred<ProviderOAuthReadyDto>>()
@@ -74,6 +76,12 @@ class FakeProviderRpcApi : KiloProviderRpcApi {
     override suspend fun saveCustom(input: CustomProviderSaveDto): ProviderActionResultDto {
         assertNotEdt("provider.saveCustom")
         custom.add(input)
+        return ProviderActionResultDto(state)
+    }
+
+    override suspend fun saveClone(input: ProviderCloneSaveDto): ProviderActionResultDto {
+        assertNotEdt("provider.saveClone")
+        clones.add(input)
         return ProviderActionResultDto(state)
     }
 

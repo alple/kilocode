@@ -12,6 +12,7 @@ import ai.kilocode.rpc.dto.CustomProviderConfigDto
 import ai.kilocode.rpc.dto.CustomProviderSaveDto
 import ai.kilocode.rpc.dto.LoadErrorDto
 import ai.kilocode.rpc.dto.ProviderActionResultDto
+import ai.kilocode.rpc.dto.ProviderCloneSaveDto
 import ai.kilocode.rpc.dto.ProviderConnectDto
 import ai.kilocode.rpc.dto.ProviderDisconnectDto
 import ai.kilocode.rpc.dto.ProviderEnableDto
@@ -125,6 +126,15 @@ internal class KiloBackendProviderSettingsManager(
             dispose()
             return ProviderActionResultDto(state(input.directory))
         }
+        if (cfg?.cloneOf != null) {
+            // A clone is removed outright: its whole config entry goes away (the catalog copy only
+            // exists while the entry does) and its stored key is deleted. Disabling would leave a
+            // half-removed instance behind.
+            patch(input.directory, cfg.scope, KiloCliDataParser.buildCustomProviderDeletePatch(input.providerId))
+            deleteAuth(input.providerId)
+            dispose()
+            return ProviderActionResultDto(state(input.directory))
+        }
         if (cfg != null || provider?.source == "config") {
             val scope = cfg?.scope ?: "global"
             val ids = disabledFor(current, scope) + input.providerId
@@ -205,6 +215,36 @@ internal class KiloBackendProviderSettingsManager(
         }
         dispose()
         return ProviderActionResultDto(state(input.directory))
+    }
+
+    /**
+     * Create an OpenRouter clone: a global config entry carrying `cloneOf` plus its own stored
+     * API key. The CLI expands the clone into a full provider with the base catalog's models.
+     */
+    suspend fun saveClone(input: ProviderCloneSaveDto): ProviderActionResultDto {
+        val err = validateClone(input)
+        if (err != null) return ProviderActionResultDto(state(input.directory), error = err)
+        val current = state(input.directory)
+        if (current.providers.none { it.id == input.cloneOf }) {
+            return ProviderActionResultDto(current, error = "Clone source provider not found: ${input.cloneOf}.")
+        }
+        if (input.id in current.config || current.providers.any { it.id == input.id }) {
+            return ProviderActionResultDto(current, error = "A provider with this ID already exists.")
+        }
+        val unDisable = disabledFor(current, "global").filter { it != input.id }
+        patch(input.directory, "global", KiloCliDataParser.buildProviderClonePatch(input.id, input.cloneOf, input.name, unDisable))
+        input.apiKey?.trim()?.takeIf { it.isNotBlank() }?.let { key ->
+            put("/auth/${enc(input.id)}", KiloCliDataParser.buildProviderAuthJson(key, emptyMap()))
+        }
+        dispose()
+        return ProviderActionResultDto(state(input.directory))
+    }
+
+    private fun validateClone(input: ProviderCloneSaveDto): String? {
+        if (!Regex("^[a-z0-9][a-z0-9_-]*$").matches(input.id.trim())) return "Provider ID must be lowercase letters, numbers, hyphens, or underscores."
+        if (input.name.isBlank()) return "Instance name is required."
+        if (input.cloneOf.isBlank()) return "Clone source provider is required."
+        return null
     }
 
     suspend fun fetch(input: CustomModelFetchDto, env: Map<String, String> = EnvironmentUtil.getEnvironmentMap()): CustomModelFetchResultDto {

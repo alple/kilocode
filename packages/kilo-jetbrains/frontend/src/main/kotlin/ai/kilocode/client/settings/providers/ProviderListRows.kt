@@ -10,6 +10,10 @@ import ai.kilocode.rpc.dto.ProviderSettingsProviderDto
 import com.intellij.icons.AllIcons
 import javax.swing.Icon
 
+// Provider clones duplicate one catalog provider; only OpenRouter offers the affordance because
+// OAuth providers and id-keyed custom loaders do not transfer cleanly to a second instance.
+internal const val CLONE_SOURCE = "openrouter"
+
 internal enum class ProviderListAction {
     CONNECT,
     OAUTH,
@@ -17,6 +21,7 @@ internal enum class ProviderListAction {
     DISCONNECT,
     DELETE,
     ENABLE,
+    DUPLICATE,
 }
 
 internal data class ProviderListRow(
@@ -56,6 +61,7 @@ internal fun providerListActionText(action: ProviderListAction) = when (action) 
     ProviderListAction.DISCONNECT -> KiloBundle.message("settings.providers.disconnect")
     ProviderListAction.DELETE -> KiloBundle.message("settings.providers.delete")
     ProviderListAction.ENABLE -> KiloBundle.message("settings.providers.enable")
+    ProviderListAction.DUPLICATE -> KiloBundle.message("settings.providers.duplicate")
 }
 
 internal fun providerListRows(state: ProviderSettingsDto, query: String, disabledRows: Boolean = false): List<ProviderListRow> {
@@ -94,15 +100,17 @@ internal fun providerActions(
     if (provider.id in disabled) return listOf(ProviderListAction.ENABLE)
     if (provider.id == KILO_PROVIDER_ID && configured(provider, state, state.connected.toSet())) return emptyList()
     if (configured(provider, state, state.connected.toSet())) {
-        return if (customEditable(provider, state)) {
+        val base = if (customEditable(provider, state)) {
             listOf(ProviderListAction.EDIT, ProviderListAction.DELETE)
         } else {
             listOf(ProviderListAction.DISCONNECT)
         }
+        return if (provider.id == CLONE_SOURCE) listOf(ProviderListAction.DUPLICATE) + base else base
     }
     val methods = providerMethods(provider, state)
     return buildList {
         if (methods.any { it.type == "oauth" }) add(ProviderListAction.OAUTH)
         if (methods.any { it.type == "api" }) add(ProviderListAction.CONNECT)
+        if (provider.id == CLONE_SOURCE) add(ProviderListAction.DUPLICATE)
     }
 }

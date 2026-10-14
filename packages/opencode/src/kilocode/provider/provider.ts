@@ -183,6 +183,20 @@ export function patchKiloProviderAuth(
   if (org !== undefined) provider.options.kilocodeOrganizationId = org
 }
 
+/**
+ * OpenRouter clones (config entries carrying cloneOf) match no custom loader, so Kilo's
+ * branding headers must be applied here to keep request parity with the real provider.
+ * User-configured headers win per key.
+ */
+export function patchKiloProviderClones(providers: Record<string, Provider.Info>, config: Config.Info) {
+  for (const [id, entry] of Object.entries(config.provider ?? {})) {
+    if (!entry?.cloneOf) continue
+    const provider = providers[id]
+    if (!provider) continue
+    provider.options = { ...provider.options, headers: { ...DEFAULT_HEADERS, ...provider.options?.headers } }
+  }
+}
+
 export function publicKiloProvider(provider: Provider.Info): Provider.Info {
   if (provider.id !== "kilo") return provider
   return { ...provider, key: undefined, options: omit(provider.options, ["apiKey", "kilocodeToken"]) }
