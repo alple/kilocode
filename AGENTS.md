@@ -34,6 +34,7 @@ Kilo CLI is an open source AI coding agent that generates code from natural lang
 - **Effect facade ratchet**: Do not add runtime-backed Promise facades to shared `packages/opencode/src` Effect services; use service dependencies, `AppRuntime`, or Kilo-owned boundaries. Run `bun run script/check-opencode-promise-facades.ts` when touching service adapters.
 - **workflow allowlist**: `bun run script/check-workflows.ts` from repo root. CI runs this as part of the annotations workflow — any `.yml` / `.yaml` file added to or removed from `.github/workflows/` must be reflected in the hardcoded list in `script/check-workflows.ts`. Prevents upstream-merged workflows from silently starting to run in our CI.
 - **Backend/SDK programmatic testing**: see [TESTING.md](./TESTING.md) for spawning the local main-branch backend (`bun dev serve`) and driving it via `curl` — use this instead of `kilo serve` (prod binary) when testing backend fixes.
+- **JetBrains build artifacts**: the Gradle build directory is relocated to `/tmp/kilo/jetbrains-build` by a machine-local init script, so plugin ZIPs from `script/build-version.sh` (lux builds, unsigned releases) land there under `distributions/` instead of inside the repo. After a successful build, **always copy the produced ZIP to the repo root** (e.g. `cp /tmp/kilo/jetbrains-build/kilo.jetbrains/distributions/<name>.zip ./`) and say where it is. Never stage or commit built ZIPs — they are 100+ MB; if the repo root lacks an ignore rule for `kilo.jetbrains-*-lux*.zip`, add one only when the user asks.
 
 ## Quality Checks
 
