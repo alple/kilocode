@@ -13,7 +13,7 @@ import ai.kilocode.client.testing.TestCoroutines
 import ai.kilocode.client.testing.TestUiTimers
 import ai.kilocode.client.app.KiloWorkspaceService
 import ai.kilocode.client.app.Workspace
-import ai.kilocode.client.plugin.KiloPluginSettings
+import ai.kilocode.client.deluxe.KiloParameterStore
 import ai.kilocode.client.session.SessionRef
 import ai.kilocode.log.KiloLog
 import ai.kilocode.rpc.dto.AgentDto
@@ -104,6 +104,13 @@ abstract class SessionControllerTestBase : BasePlatformTestCase() {
     protected lateinit var workspace: Workspace
     protected lateinit var timers: TestUiTimers
 
+    /**
+     * The project store all controllers of this test share. Fresh per test (BasePlatformTestCase
+     * builds a fixture per method), so no cross-test cleanup is needed; tests that record picks
+     * read it back through [assertStore] or the same accessors production uses.
+     */
+    protected val store = KiloParameterStore()
+
     private lateinit var coroutines: TestCoroutines
     protected lateinit var scope: CoroutineScope
     protected lateinit var parent: Disposable
@@ -122,9 +129,6 @@ abstract class SessionControllerTestBase : BasePlatformTestCase() {
         timers = TestUiTimers()
         notifications.clear()
         infoNotifications.clear()
-        // Application-level and shared across tests in a fixture, and it now seeds a new session's
-        // mode, so a leftover pick from another test would decide this one's starting agent.
-        KiloPluginSettings.unsetAgent()
 
         coroutines = TestCoroutines()
         scope = coroutines.scope
@@ -140,7 +144,6 @@ abstract class SessionControllerTestBase : BasePlatformTestCase() {
         try {
             Disposer.dispose(parent)
             coroutines.close()
-            KiloPluginSettings.unsetAgent()
         } finally {
             super.tearDown()
         }
@@ -188,6 +191,7 @@ abstract class SessionControllerTestBase : BasePlatformTestCase() {
             sessions = sessions,
             workspace = workspace,
             app = app,
+            store = store,
             cs = scope,
             comp = root,
             flushMs = flushMs,

@@ -25,8 +25,12 @@ internal object MdCommon {
     /** Anchor class [ai.kilocode.client.ui.md.hybrid.MdProjector]'s code-span linkifier tags its links with. */
     const val URL_REF_CLASS = "kilo-url-ref"
 
+    // "p-implied" covers Swing's implied paragraphs — the wrapper the HTML reader inserts inside <li>
+    // (and <td>) around bare text. Without a rule it matches nothing, so list item text and the list
+    // marker (whose font ListPainter resolves from that view) fall back to Swing's 12pt base font and
+    // render smaller than the surrounding prose (KILO-15.4).
     val tags = listOf(
-        "body", "p", "div", "span", "ul", "ol", "li", "table", "thead", "tbody", "tr", "th", "td",
+        "body", "p", "p-implied", "div", "span", "ul", "ol", "li", "table", "thead", "tbody", "tr", "th", "td",
         "blockquote", "h1", "h2", "h3", "h4", "h5", "h6", "a", "tt", "code", "samp", "pre",
     )
 

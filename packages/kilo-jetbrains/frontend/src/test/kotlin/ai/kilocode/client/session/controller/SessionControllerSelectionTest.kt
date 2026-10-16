@@ -58,5 +58,9 @@ class SessionControllerSelectionTest : SessionControllerTestBase() {
         assertEquals("kilo", sent.third.providerID)
         assertEquals("opus", sent.third.modelID)
         assertEquals("high", sent.third.variant)
+        // The dialog recorded its own picks at create time; the session never writes the store.
+        assertNull(store.agent())
+        assertNull(store.model("plan"))
+        assertNull(store.variant("plan/kilo/opus"))
     }
 }

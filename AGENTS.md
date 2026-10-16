@@ -36,6 +36,7 @@ Kilo CLI is an open source AI coding agent that generates code from natural lang
 - **workflow allowlist**: `bun run script/check-workflows.ts` from repo root. CI runs this as part of the annotations workflow — any `.yml` / `.yaml` file added to or removed from `.github/workflows/` must be reflected in the hardcoded list in `script/check-workflows.ts`. Prevents upstream-merged workflows from silently starting to run in our CI.
 - **Backend/SDK programmatic testing**: see [TESTING.md](./TESTING.md) for spawning the local main-branch backend (`bun dev serve`) and driving it via `curl` — use this instead of `kilo serve` (prod binary) when testing backend fixes.
 - **JetBrains build artifacts**: the Gradle build directory is relocated to `/tmp/kilo/jetbrains-build` by a machine-local init script, so plugin ZIPs from `script/build-version.sh` (lux builds, unsigned releases) land there under `distributions/` instead of inside the repo. After a successful build, **always copy the produced ZIP to the repo root** (e.g. `cp /tmp/kilo/jetbrains-build/kilo.jetbrains/distributions/<name>.zip ./`) and say where it is. Never stage or commit built ZIPs — they are 100+ MB; if the repo root lacks an ignore rule for `kilo.jetbrains-*-lux*.zip`, add one only when the user asks.
+- **JetBrains versions: stable, never RC — locked.** "Build the plugin" / "new version" always resolves to a stable base. `script/build-version.sh` enforces a version gate: it rejects every `-rc.n` version outright, and a `-lux` build's base must be a **published stable upstream Kilo JetBrains release** — an existing `jetbrains/v<x.y.z>` tag (latest stable today: 7.1.9; the 7.1.10 line exists only as RCs, so it is not a valid base until 7.1.10 stable is published). Lux builds stay unsigned local test artifacts whose code is the dev worktree; only their base number is pinned to the stable line. Deluxe releases are recorded by `script/build-lux.sh` as `jetbrains-lux/v<base>-lux<N>` tags pushed to origin. RC artifacts are only possible through `/release-jetbrains` with an explicit `x.y.z-rc.n` spec and user confirmation; that command's bare default is `next stable` (which follows upstream's resolution — an RC line's base becomes the stable — and always confirms the resolved version before tagging).
 
 ## Quality Checks
 
@@ -51,6 +52,14 @@ Before saying an implementation is ready, run the smallest relevant checks that 
 | CI/local guards | Run affected guards documented above, such as `bun run knip`, `bun run check-kilocode-change`, `bun run script/check-opencode-annotations.ts --worktree`, or source link extraction |
 
 Never run root `bun test`; the root script prints `do not run tests from root` and exits with code 1. Use package-level tests instead.
+
+## Waiting on background jobs
+
+Never park the session on long `sleep` calls while a detached build/test/IDE run progresses. Poll in short intervals (~10–30 s) and do other useful work between polls; if there is genuinely nothing else to do, keep each sleep short and check progress every time. A long-running job is not an excuse for an idle multi-minute wait — the user sees dead air.
+
+Every poll is a verdict, not a wait: pull the last ~20 lines of the log and classify the job — running (name the task in progress), succeeded (a completion marker such as `BUILD SUCCESSFUL` or the script's final summary lines), or failed (error text in the tail). Jobs often end with errors printed after the last task line; treat an unexplained stack trace or exception in the tail as a failure signal to investigate, never as scroll-past noise. Jobs finish quickly — classify from the tail each time instead of assuming the job is still running.
+
+If a detached Gradle run was killed mid-flight (tool timeout, user abort), its incremental compile state can go stale and the next run fails with bogus `NoSuchMethodError`/assertion errors in tests that actually pass. Re-run the affected classes with `--rerun-tasks` (forced recompile) before treating those failures as real.
 
 ## Products
 

@@ -169,8 +169,10 @@ class ReasoningView(
     override fun applyStyle(style: SessionEditorStyle) {
         this.style = style
         var changed = false
-        if (parts.title.font != style.thinkingFont) {
-            parts.title.font = style.thinkingFont
+        // The header label is small chrome text: it must not grow with the thinking offset, which sizes
+        // the reasoning body (KILO-15.1).
+        if (parts.title.font != style.smallEditorFont) {
+            parts.title.font = style.smallEditorFont
             changed = true
         }
         changed = applyBodyStyle() || changed

@@ -141,10 +141,10 @@ class SessionEditorStyleTest : BasePlatformTestCase() {
 
     // --- chat font settings: per-group offsets and family override ---
 
-    fun `test thinking font matches small text by default`() {
+    fun `test thinking font matches transcript text at default offsets`() {
         val base = SessionEditorStyle.create(family = "Courier New", size = 22)
-        assertEquals(base.smallEditorFont.size, base.thinkingFont.size)
-        assertEquals(UiStyle.Fonts.small().name, base.thinkingFont.name)
+        assertEquals(base.transcriptFont.size, base.thinkingFont.size)
+        assertEquals(UiStyle.Fonts.regular().name, base.thinkingFont.name)
         assertEquals(UiStyle.Fonts.regular().name, base.promptFont.name)
         assertEquals(base.transcriptFont.size, base.promptFont.size)
     }
@@ -157,7 +157,8 @@ class SessionEditorStyleTest : BasePlatformTestCase() {
             chat = ChatFontSpec(response = 1f, thinking = 2f, tool = 3f, prompt = 4f),
         )
         assertEquals(base.editorSize + 1, shifted.transcriptFont.size)
-        assertEquals(base.smallEditorFont.size + 2, shifted.thinkingFont.size)
+        assertEquals(base.editorSize + 2, shifted.thinkingFont.size)
+        assertTrue(shifted.thinkingFont.size > shifted.smallEditorFont.size)
         assertEquals(base.editorSize + 3, shifted.editorFont.size)
         assertEquals(base.editorSize + 3, shifted.codeSize)
         assertEquals(base.editorSize + 4, shifted.promptFont.size)
@@ -179,6 +180,18 @@ class SessionEditorStyleTest : BasePlatformTestCase() {
         assertEquals(UiStyle.Fonts.small().name, shifted.smallFont.name)
     }
 
+    fun `test equal offsets render equal nominal sizes across chat groups`() {
+        val shifted = SessionEditorStyle.create(
+            family = "Courier New",
+            size = 22,
+            chat = ChatFontSpec(response = 2f, thinking = 2f, tool = 2f, prompt = 2f),
+        )
+        assertEquals(shifted.transcriptFont.size, shifted.thinkingFont.size)
+        assertEquals(shifted.transcriptFont.size, shifted.promptFont.size)
+        assertEquals(shifted.transcriptFont.size, shifted.editorFont.size)
+        assertEquals(shifted.transcriptFont.size, shifted.codeSize)
+    }
+
     fun `test default spec preserves derived sizes`() {
         val base = SessionEditorStyle.create(family = "Courier New", size = 22)
         val withDefaults = SessionEditorStyle.create(family = "Courier New", size = 22, chat = ChatFontSpec.DEFAULT)
@@ -187,6 +200,23 @@ class SessionEditorStyleTest : BasePlatformTestCase() {
         assertEquals(base.editorFont.size, withDefaults.editorFont.size)
         assertEquals(base.thinkingFont.size, withDefaults.thinkingFont.size)
         assertEquals(base.promptFont.size, withDefaults.promptFont.size)
+    }
+
+    fun `test tool header fonts match fixed fonts at zero tool offset`() {
+        val style = SessionEditorStyle.create(family = "Courier New", size = 22)
+        assertEquals(style.boldEditorFont, style.toolTitleFont)
+        assertTrue(style.toolTitleFont.isBold)
+        assertEquals(style.smallEditorFont, style.toolSubtitleFont)
+        assertFalse(style.toolSubtitleFont.isBold)
+    }
+
+    fun `test tool header fonts follow the tool offset`() {
+        val base = SessionEditorStyle.create(family = "Courier New", size = 22)
+        val shifted = SessionEditorStyle.create(family = "Courier New", size = 22, chat = ChatFontSpec(tool = 2f))
+        assertEquals(base.editorSize + 2, shifted.toolTitleFont.size)
+        assertTrue(shifted.toolTitleFont.isBold)
+        assertTrue("subtitle must grow with the tool offset", shifted.toolSubtitleFont.size > base.smallEditorFont.size)
+        assertTrue(shifted.toolSubtitleFont.size < shifted.toolTitleFont.size)
     }
 
     fun `test applyToEditor skips redundant scheme reinit for the same snapshot`() {

@@ -199,10 +199,11 @@ class EditToolView(
     override fun applyStyle(style: SessionEditorStyle) {
         this.style = style
         var changed = false
-        changed = setFont(parts.title, style.boldEditorFont) || changed
-        changed = setFont(parts.sub, style.transcriptFont) || changed
-        changed = setFont(parts.link, style.transcriptFont) || changed
-        changed = setFont(parts.state, style.smallEditorFont) || changed
+        // Header chrome follows the Tool output & code offset (KILO-15.4, revising KILO-15.1).
+        changed = setFont(parts.title, style.toolTitleFont) || changed
+        changed = setFont(parts.sub, style.toolSubtitleFont) || changed
+        changed = setFont(parts.link, style.toolSubtitleFont) || changed
+        changed = setFont(parts.state, style.toolSubtitleFont) || changed
         changed = body.applyStyle(style) || changed
         changed = footer.applyStyle(style) || changed
         if (changed) refresh()

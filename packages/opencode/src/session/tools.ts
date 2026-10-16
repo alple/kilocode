@@ -476,9 +476,13 @@ export const resolve = Effect.fn("SessionTools.resolve")(function* (input: {
     const execute = item.execute
     if (!execute) continue
 
-    const schema = yield* Effect.promise(() => Promise.resolve(asSchema(item.inputSchema).jsonSchema))
+    // kilocode_change start - keep MCP input validation across the provider schema rewrite below;
+    // validation must check the original MCP schema, the transformed one only shapes the model view
+    const base = asSchema(item.inputSchema)
+    const schema = yield* Effect.promise(() => Promise.resolve(base.jsonSchema))
     const transformed = ProviderTransform.schema(input.model, { ...schema, properties: schema.properties ?? {} })
-    item.inputSchema = jsonSchema(transformed)
+    item.inputSchema = jsonSchema(transformed, { validate: base.validate })
+    // kilocode_change end
     item.execute = (args, opts) =>
       run.promise(
         Effect.gen(function* () {

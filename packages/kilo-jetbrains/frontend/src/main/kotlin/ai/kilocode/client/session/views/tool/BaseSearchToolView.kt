@@ -121,10 +121,11 @@ abstract class BaseSearchToolView(
     override fun applyStyle(style: SessionEditorStyle) {
         this.style = style
         var changed = false
-        changed = setFont(parts.title, style.boldEditorFont) || changed
-        changed = setFont(parts.sub, style.smallEditorFont) || changed
+        // Header chrome follows the Tool output & code offset (KILO-15.4).
+        changed = setFont(parts.title, style.toolTitleFont) || changed
+        changed = setFont(parts.sub, style.toolSubtitleFont) || changed
         parts.targets.forEach { changed = setFont(it, style.regularFont) || changed }
-        changed = setFont(parts.state, style.smallEditorFont) || changed
+        changed = setFont(parts.state, style.toolSubtitleFont) || changed
         changed = applyBodyStyle() || changed
         changed = footer.applyStyle(style) || changed
         if (changed) refresh()

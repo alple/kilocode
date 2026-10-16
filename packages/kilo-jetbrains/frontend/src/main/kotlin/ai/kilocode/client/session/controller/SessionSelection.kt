@@ -3,7 +3,6 @@ package ai.kilocode.client.session.controller
 import ai.kilocode.rpc.dto.AgentsDto
 import ai.kilocode.rpc.dto.ConfigDto
 import ai.kilocode.rpc.dto.ModelSelectionDto
-import ai.kilocode.rpc.dto.ModelStateDto
 import ai.kilocode.rpc.dto.ProvidersDto
 
 internal const val KILO_PROVIDER = "kilo"
@@ -18,11 +17,33 @@ internal fun resolveSessionAgent(agents: AgentsDto?, remembered: String?): Strin
     return if (offered.any { it.name == remembered }) remembered else agents.default
 }
 
-/** Resolves the model a blank session would use without its persisted per-agent override. */
+/** Reasoning efforts from weakest to strongest; the index is the rank. */
+private val VARIANT_RANK = listOf("none", "low", "medium", "high", "xhigh", "max")
+
+private fun variantRank(name: String): Int = VARIANT_RANK.indexOf(name.lowercase())
+
+/**
+ * The strongest reasoning effort in [variants]: max > xhigh > high > medium > low > none.
+ * Unknown names are unranked and lose to any ranked one; with no ranked name at all the last
+ * listed entry wins (variant lists run weakest-first). Null when [variants] is empty.
+ */
+internal fun strongestVariant(variants: List<String>): String? {
+    var best: String? = null
+    var bestRank = Int.MIN_VALUE
+    for (name in variants) {
+        val rank = variantRank(name)
+        if (rank >= bestRank) {
+            best = name
+            bestRank = rank
+        }
+    }
+    return best
+}
+
+/** Resolves the model a blank session would use without the project store's per-agent pick. */
 internal fun resolveSessionDefaultModel(
     providers: ProvidersDto?,
     agent: String,
-    state: ModelStateDto,
     config: ConfigDto?,
     ready: Boolean,
     first: ModelSelectionDto?,
@@ -31,7 +52,6 @@ internal fun resolveSessionDefaultModel(
         providers = providers,
         mode = config?.agent?.get(agent)?.model?.let(::modelSelection),
         global = config?.model?.let(::modelSelection),
-        recent = state.recent,
     )
     return resolveModelSelection(
         providers = providers,
@@ -41,23 +61,21 @@ internal fun resolveSessionDefaultModel(
     ) ?: first
 }
 
-/** Resolves the effective model for a blank session, including its persisted per-agent override. */
+/** Resolves the effective model for a blank session, including the project store's per-agent pick. */
 internal fun resolveSessionModel(
     providers: ProvidersDto?,
     agent: String,
-    state: ModelStateDto,
+    store: ModelSelectionDto?,
     config: ConfigDto?,
     default: ModelSelectionDto?,
 ): ModelSelectionDto? {
-    val saved = state.model[agent]
     if (config != null) return resolveModelSelection(
         providers = providers,
-        override = saved,
+        override = store,
         mode = config.agent[agent]?.model?.let(::modelSelection),
         global = config.model?.let(::modelSelection),
-        recent = state.recent,
     )
-    if (saved != null) return validModelSelection(providers, saved) ?: default
+    if (store != null) return validModelSelection(providers, store) ?: default
     return default
 }
 
@@ -66,13 +84,11 @@ private fun resolveModelSelection(
     override: ModelSelectionDto? = null,
     mode: ModelSelectionDto? = null,
     global: ModelSelectionDto? = null,
-    recent: List<ModelSelectionDto> = emptyList(),
     fallback: ModelSelectionDto? = ModelSelectionDto(KILO_PROVIDER, KILO_AUTO_MODEL),
 ): ModelSelectionDto? {
     validModelSelection(providers, override)?.let { return it }
     validModelSelection(providers, mode)?.let { return it }
     validModelSelection(providers, global)?.let { return it }
-    recent.firstNotNullOfOrNull { validModelSelection(providers, it) }?.let { return it }
     return fallback
 }
 

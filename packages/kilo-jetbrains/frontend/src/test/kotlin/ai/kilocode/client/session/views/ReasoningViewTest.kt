@@ -220,17 +220,17 @@ class ReasoningViewTest : BasePlatformTestCase() {
         val style = SessionEditorStyle.current()
         val view = ReasoningView(reasoning("p1", done = true, text = "one\ntwo\nthree\nfour"))
         view.toggle()
+        assertThinkingItalicSheet(view.md.overrideSheet(), style)
 
-        assertSmallItalicSheet(view.md.overrideSheet(), style)
         assertEquals(ScrollPaneConstants.HORIZONTAL_SCROLLBAR_NEVER, view.horizontalPolicy())
     }
 
-    fun `test reasoning header uses smaller ui font with editor-derived size`() {
+    fun `test reasoning header uses small chrome font`() {
         val style = SessionEditorStyle.current()
         val view = ReasoningView(reasoning("p1", done = true, text = "one"))
         val font = view.headerFont()
 
-        assertEquals(style.thinkingFont.name, font.name)
+        assertEquals(style.smallEditorFont.name, font.name)
         assertTrue(font.size < style.editorSize)
     }
 
@@ -250,8 +250,8 @@ class ReasoningViewTest : BasePlatformTestCase() {
         view.applyStyle(style)
 
         assertSame(component, view.md.component)
-        assertSmallItalicSheet(view.md.overrideSheet(), style)
-        assertEquals(style.thinkingFont.name, view.headerFont().name)
+        assertThinkingItalicSheet(view.md.overrideSheet(), style)
+        assertEquals(style.smallEditorFont.name, view.headerFont().name)
         assertTrue(view.headerFont().size < style.editorSize)
     }
 
@@ -371,9 +371,9 @@ class ReasoningViewTest : BasePlatformTestCase() {
         assertTrue(sheet.contains("${style.editorSize}pt"))
     }
 
-    private fun assertSmallItalicSheet(sheet: String, style: SessionEditorStyle) {
+    private fun assertThinkingItalicSheet(sheet: String, style: SessionEditorStyle) {
         assertTrue(sheet.contains(style.thinkingFont.name))
-        assertFalse(sheet.contains("${style.editorSize}pt"))
+        assertTrue(sheet.contains("${style.thinkingFont.size}pt"))
         assertTrue(sheet.contains("font-style: italic"))
     }
 

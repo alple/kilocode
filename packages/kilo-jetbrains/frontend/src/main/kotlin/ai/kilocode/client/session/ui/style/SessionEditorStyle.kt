@@ -27,12 +27,14 @@ import kotlin.math.roundToInt
  * [codeSize] is the editor size with the tool/code offset applied.
  *
  * UI font fields ([transcriptFont], [thinkingFont], [promptFont], [smallEditorFont], [boldEditorFont],
- * [headerFont], [regularFont], [boldFont], [smallFont]) come from [UiStyle.Fonts] and follow standard platform
- * typography. Transcript fonts use the editor size so the session body tracks editor zoom without adopting the editor
- * family. Chat font settings apply per-group offsets on top: [transcriptFont] carries the chat-response offset,
- * [thinkingFont] the thinking offset, [promptFont] the prompt offset; a chat family override replaces the family of
- * those three only. [applyToEditor] sizes embedded code editors with [codeSize] and [applyInputToField]/
- * [applyPromptToEditor] style user-input editors with [promptFont].
+ * [toolTitleFont], [toolSubtitleFont], [headerFont], [regularFont], [boldFont], [smallFont]) come from [UiStyle.Fonts]
+ * and follow standard platform typography. Transcript fonts use the editor size so the session body tracks editor
+ * zoom without adopting the editor family. Chat font settings apply per-group offsets on top: [transcriptFont]
+ * carries the chat-response offset, [thinkingFont] the thinking offset, [promptFont] the prompt offset; a chat
+ * family override replaces the family of those three only. [toolTitleFont] and [toolSubtitleFont] size tool-card
+ * header chrome (title bold, subtitle small) at the tool group size, so the Tool output & code offset steers the
+ * whole card header together with its body (KILO-15.4). [applyToEditor] sizes embedded code editors with
+ * [codeSize] and [applyInputToField]/[applyPromptToEditor] style user-input editors with [promptFont].
  */
 data class SessionEditorStyle(
     val editorScheme: EditorColorsScheme,
@@ -46,6 +48,8 @@ data class SessionEditorStyle(
     val promptFont: Font,
     val smallEditorFont: Font,
     val boldEditorFont: Font,
+    val toolTitleFont: Font,
+    val toolSubtitleFont: Font,
     val headerFont: Font,
     val regularFont: Font,
     val boldFont: Font,
@@ -135,6 +139,7 @@ data class SessionEditorStyle(
             chat: ChatFontSpec = ChatFontSpec.DEFAULT,
         ): SessionEditorStyle {
             val small = scaledEditorSize(size, JBFont.small())
+            val toolSize = (size + chat.tool).roundToInt().coerceAtLeast(1)
             return SessionEditorStyle(
                 editorScheme = scheme,
                 editorFamily = family,
@@ -146,15 +151,22 @@ data class SessionEditorStyle(
                 // fractional size through getSize2D.
                 editorFont = Font(family, Font.PLAIN, size).deriveFont(Font.PLAIN, (size + chat.tool).coerceAtLeast(1f)),
                 transcriptFont = chatTextFont(UiStyle.Fonts.regular(), size + chat.response, chat.family),
-                thinkingFont = chatTextFont(UiStyle.Fonts.small(), small + chat.thinking, chat.family),
+                // Reasoning body text renders at the chat base like prose; the label-ratio shrink made
+                // reasoning bullet lists read visibly smaller than the response text (KILO-15.1).
+                thinkingFont = chatTextFont(UiStyle.Fonts.regular(), size + chat.thinking, chat.family),
                 promptFont = chatTextFont(UiStyle.Fonts.regular(), size + chat.prompt, chat.family),
                 smallEditorFont = uiFont(UiStyle.Fonts.small(), Font.PLAIN, small),
                 boldEditorFont = uiFont(UiStyle.Fonts.regular(), Font.BOLD, size),
+                // Tool-card header chrome follows the tool group (KILO-15.4): a bold title and the small
+                // subtitle at the tool base size, so the Tool output & code offset steers the whole header
+                // together with the body. At offset 0 both match the fixed [boldEditorFont]/[smallEditorFont].
+                toolTitleFont = uiFont(UiStyle.Fonts.regular(), Font.BOLD, toolSize),
+                toolSubtitleFont = uiFont(UiStyle.Fonts.small(), Font.PLAIN, scaledEditorSize(toolSize, JBFont.small())),
                 headerFont = UiStyle.Fonts.header(),
                 regularFont = UiStyle.Fonts.regular(),
                 boldFont = UiStyle.Fonts.bold(),
                 smallFont = UiStyle.Fonts.small(),
-                codeSize = (size + chat.tool).roundToInt().coerceAtLeast(1),
+                codeSize = toolSize,
             )
         }
 

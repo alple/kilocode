@@ -3,6 +3,7 @@ package ai.kilocode.client.session.views
 import ai.kilocode.client.session.model.Tool
 import ai.kilocode.client.session.model.ToolExecState
 import ai.kilocode.client.session.model.toolKind
+import ai.kilocode.client.session.ui.style.SessionEditorStyle
 import ai.kilocode.client.session.views.tool.GlobToolView
 import ai.kilocode.client.session.views.tool.ReadToolView
 import ai.kilocode.client.session.views.tool.SearchToolView
@@ -51,7 +52,9 @@ class ReadToolViewTest : BasePlatformTestCase() {
         assertEquals(path, view.linkTooltip())
         assertTrue(view.linkUnderline())
         assertEquals(UiStyle.Colors.fg().rgb, view.linkForeground().rgb)
-        assertEquals(view.linkFont(), view.bodyFont())
+        // Header chrome follows the Tool output & code offset; the body preview stays transcript-sized.
+        assertEquals(SessionEditorStyle.current().toolSubtitleFont.name, view.linkFont().name)
+        assertTrue(view.linkFont().size < view.bodyFont().size)
         assertTrue(view.labelText().contains("SessionUiLayoutTest.kt"))
 
         view.openLink()
@@ -75,7 +78,9 @@ class ReadToolViewTest : BasePlatformTestCase() {
         assertNull(view.linkHref())
         assertNull(view.linkTooltip())
         assertEquals(UiStyle.Colors.fg().rgb, view.subtitleForeground().rgb)
-        assertEquals(view.subtitleFont(), view.bodyFont())
+        // Header chrome follows the Tool output & code offset; the body preview stays transcript-sized.
+        assertEquals(SessionEditorStyle.current().toolSubtitleFont.name, view.subtitleFont().name)
+        assertTrue(view.subtitleFont().size < view.bodyFont().size)
         assertTrue(view.labelText().contains(path))
     }
 

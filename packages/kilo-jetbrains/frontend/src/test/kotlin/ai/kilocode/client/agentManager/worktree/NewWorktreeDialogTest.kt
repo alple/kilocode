@@ -2,6 +2,7 @@ package ai.kilocode.client.agentManager.worktree
 
 import ai.kilocode.client.app.KiloAppService
 import ai.kilocode.client.app.KiloWorkspaceService
+import ai.kilocode.client.deluxe.KiloParameterStore
 import ai.kilocode.client.plugin.KiloPluginSettings
 import ai.kilocode.client.session.ui.ReasoningPicker
 import ai.kilocode.client.session.ui.mode.ModePicker
@@ -18,8 +19,6 @@ import ai.kilocode.rpc.dto.ConfigDto
 import ai.kilocode.rpc.dto.KiloAppStateDto
 import ai.kilocode.rpc.dto.KiloAppStatusDto
 import ai.kilocode.rpc.dto.ModelDto
-import ai.kilocode.rpc.dto.ModelSelectionDto
-import ai.kilocode.rpc.dto.ModelStateDto
 import ai.kilocode.rpc.dto.ModelsWorkspaceDto
 import ai.kilocode.rpc.dto.ProviderDto
 import ai.kilocode.rpc.dto.ProvidersDto
@@ -49,6 +48,7 @@ class NewWorktreeDialogTest : BasePlatformTestCase() {
     private lateinit var appRpc: FakeAppRpcApi
     private lateinit var workspaces: KiloWorkspaceService
     private lateinit var sessionRpc: FakeSessionRpcApi
+    private lateinit var store: KiloParameterStore
     private var dialog: NewWorktreeDialog? = null
 
     override fun setUp() {
@@ -59,7 +59,7 @@ class NewWorktreeDialogTest : BasePlatformTestCase() {
         val ws = FakeWorkspaceRpcApi().apply { models = workspace() }
         workspaces = KiloWorkspaceService(scope, ws)
         sessionRpc = FakeSessionRpcApi()
-        KiloPluginSettings.unsetAgent()
+        store = KiloParameterStore()
     }
 
     override fun tearDown() {
@@ -68,7 +68,6 @@ class NewWorktreeDialogTest : BasePlatformTestCase() {
             dialog?.let { d -> edt { Disposer.dispose(d.disposable) } }
             dialog = null
             scope.cancel()
-            KiloPluginSettings.unsetAgent()
         } finally {
             super.tearDown()
         }
@@ -82,13 +81,13 @@ class NewWorktreeDialogTest : BasePlatformTestCase() {
             assertEquals("build", mode().selectedForTest()?.id)
             assertEquals("kilo/gpt-5", model().selectionKeyForTest())
             assertTrue(reasoning().isVisible)
-            assertEquals("low", reasoning().selectedForTest()?.id)
+            assertEquals("high", reasoning().selectedForTest()?.id)
         }
     }
 
-    fun `test loads the remembered normal session mode and its saved model`() {
-        KiloPluginSettings.setAgent("plan")
-        app.selectModel("plan", "kilo", "opus")
+    fun `test loads the remembered project mode and its stored model`() {
+        store.setAgent("plan")
+        store.setModel("plan", "kilo", "opus")
 
         open()
         flushUntil { edt { model().selectionKeyForTest() != null } }
@@ -117,19 +116,21 @@ class NewWorktreeDialogTest : BasePlatformTestCase() {
         }
     }
 
-    fun `test follows normal session model state that arrives after the catalog`() {
+    fun `test follows a config that arrives after the catalog`() {
         app._state.value = KiloAppStateDto(KiloAppStatusDto.READY, config = ConfigDto())
         open()
         flushUntil { edt { model().selectionKeyForTest() != null } }
         edt { assertEquals("kilo/gpt-5", model().selectionKeyForTest()) }
 
-        appRpc.models = ModelStateDto(recent = listOf(ModelSelectionDto("kilo", "opus")))
-        app.refreshModelFavoritesAsync()
+        app._state.value = KiloAppStateDto(
+            KiloAppStatusDto.READY,
+            config = ConfigDto(model = "kilo/opus"),
+        )
 
         flushUntil { edt { model().selectionKeyForTest() == "kilo/opus" } }
     }
 
-    fun `test selecting a mode forwards it with the created prompt only`() {
+    fun `test selecting a mode forwards it with the created prompt and records it`() {
         open()
         flushUntil { edt { model().selectionKeyForTest() != null } }
 
@@ -140,28 +141,40 @@ class NewWorktreeDialogTest : BasePlatformTestCase() {
         flushUntil { edt { prompt().isSendEnabled } }
         edt { prompt().send() }
 
-        // The prompt is the only place the pick travels: writing it to the CLI's global default_agent
-        // disposed every instance the CLI held and cancelled every running turn in every worktree.
+        // The pick travels with the prompt and becomes this project's remembered mode, because the
+        // created session is the one it configures. Nothing reaches the CLI's global config.
         assertEquals("plan", submitted().prompt?.agent)
-        assertNull(KiloPluginSettings.getAgent())
+        assertEquals("plan", store.agent())
     }
 
-    fun `test selecting a model persists it for the default agent`() {
+    fun `test creating records a picked model for the agent`() {
         open()
         flushUntil { edt { model().selectionKeyForTest() != null } }
 
-        edt { model().onSelect(ModelPicker.Item("gpt-5", "GPT-5", "kilo", "Kilo", variants = listOf("low", "high"))) }
+        edt {
+            model().onSelect(ModelPicker.Item("gpt-5", "GPT-5", "kilo", "Kilo", variants = listOf("low", "high")))
+            prompt().setText("do it")
+        }
+        flushUntil { edt { prompt().isSendEnabled } }
+        edt { prompt().send() }
 
-        assertEquals(ModelSelectionDto("kilo", "gpt-5"), app.models.value.model["build"])
+        submitted()
+        assertEquals("kilo/gpt-5", store.model("build"))
     }
 
-    fun `test selecting reasoning persists the variant for the current model`() {
+    fun `test creating records a picked effort for the agent and model`() {
         open()
         flushUntil { edt { model().selectionKeyForTest() != null } }
 
-        edt { reasoning().onSelect(ReasoningPicker.Item("high", "High")) }
+        edt {
+            reasoning().onSelect(ReasoningPicker.Item("high", "High"))
+            prompt().setText("do it")
+        }
+        flushUntil { edt { prompt().isSendEnabled } }
+        edt { prompt().send() }
 
-        assertEquals("high", app.models.value.variant["kilo/gpt-5"])
+        submitted()
+        assertEquals("high", store.variant("build/kilo/gpt-5"))
     }
 
     fun `test creating forwards the prompt, resolved branch, and default selection`() {
@@ -181,21 +194,42 @@ class NewWorktreeDialogTest : BasePlatformTestCase() {
         assertEquals("build", payload.agent)
         assertEquals("kilo", payload.provider)
         assertEquals("gpt-5", payload.model)
-        assertEquals("low", payload.variant)
+        assertEquals("high", payload.variant)
+        // No pick was made, so the project store stays empty: computed defaults are not recorded.
+        assertNull(store.agent())
+        assertNull(store.model("build"))
+        assertNull(store.variant("build/kilo/gpt-5"))
     }
 
-    fun `test creating sends the visible reasoning fallback instead of an invalid saved value`() {
-        app.selectVariant("kilo/gpt-5", "stale")
+    fun `test creating sends the visible reasoning fallback instead of an invalid stored value`() {
+        store.setVariant("build/kilo/gpt-5", "stale")
         open()
         flushUntil { edt { model().selectionKeyForTest() != null } }
         edt {
-            assertEquals("low", reasoning().selectedForTest()?.id)
+            assertEquals("high", reasoning().selectedForTest()?.id)
             prompt().setText("build the thing")
         }
         flushUntil { edt { prompt().isSendEnabled } }
         edt { prompt().send() }
 
-        assertEquals("low", submitted().prompt?.variant)
+        assertEquals("high", submitted().prompt?.variant)
+    }
+
+    fun `test picked selections survive catalog re-syncs until the create is confirmed`() {
+        open()
+        flushUntil { edt { model().selectionKeyForTest() != null } }
+
+        edt {
+            model().onSelect(ModelPicker.Item("gpt-5", "GPT-5", "kilo", "Kilo", variants = listOf("low", "high")))
+            reasoning().onSelect(ReasoningPicker.Item("low", "Low"))
+        }
+        app._state.value = KiloAppStateDto(KiloAppStatusDto.READY, config = ConfigDto())
+
+        flushUntil { edt { reasoning().selectedForTest()?.id == "low" } }
+        edt {
+            assertEquals("kilo/gpt-5", model().selectionKeyForTest())
+            assertEquals("low", reasoning().selectedForTest()?.id)
+        }
     }
 
     fun `test base branch fuzzy search selects matching popup item`() {
@@ -426,6 +460,7 @@ class NewWorktreeDialogTest : BasePlatformTestCase() {
                 origin,
                 app,
                 workspaces,
+                store,
             )
         }
     }

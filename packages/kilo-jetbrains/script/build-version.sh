@@ -9,14 +9,15 @@ Builds the JetBrains plugin for a version without creating or validating a git t
 By default this runs a clean build, signs the ZIP, and verifies it.
 
 Version:
-  x.y.z or x.y.z-rc.n, with an optional leading v. A -lux suffix marks a local "lux" build:
+  x.y.z, with an optional leading v; RC versions (x.y.z-rc.n) are rejected by the
+  version gate. A -lux suffix marks a local "lux" build:
   it sorts below its base release, so it can never shadow a published version, and it builds
   under a separate plugin id and name (ai.kilocode.jetbrains.lux / Kilo Code (lux)) so it
   installs side-by-side with the published plugin. The lux counter lives in gradle.properties
   (kilo.lux.version) and increments per build — pass -lux to continue it (e.g. 7.0.1-lux), or
   an explicit -lux<N> to pin the number (e.g. 7.0.1-lux4; must match the counter). An optional
-  +<sha> build-metadata suffix marks a local, non-release build off a dev commit
-  (e.g. 7.0.1-rc.1+8d0c4147); it never matches a jetbrains/v<version> release tag.
+     +<sha> build-metadata suffix marks a local, non-release build off a dev commit
+     (e.g. 7.0.1+8d0c4147); it never matches a jetbrains/v<version> release tag.
 
 Options:
   --skip-signing       Build an unsigned ZIP without requiring JetBrains signing secrets.
@@ -24,12 +25,15 @@ Options:
   --skip-clean         Reuse Gradle outputs instead of running ./gradlew clean first.
   -h, --help           Show this help.
 
+Version gate:
+  No release candidates pass: x.y.z-rc.n versions are rejected outright, and a lux
+  build's base must be a published stable Kilo JetBrains release — a jetbrains/v<x.y.z>
+  tag must exist (checked locally, then on origin/upstream). Deluxe releases are
+  recorded by script/build-lux.sh as jetbrains-lux/v<base>-lux<N> tags.
+
 Examples:
   $0 7.0.1
-  $0 v7.0.1-rc.1
-  $0 7.0.1-rc.1 --skip-signing --skip-verification
   $0 7.0.1 --skip-clean --skip-signing --skip-verification
-  $0 7.0.1-rc.1+8d0c4147 --skip-signing --skip-verification
   $0 7.0.1-lux --skip-signing --skip-verification
   $0 7.0.1-lux4 --skip-signing --skip-verification
 EOF
@@ -104,6 +108,34 @@ if [[ "$version" =~ -lux[0-9]* ]]; then
     version="$version$counter"
   elif [[ "$version" != *-lux"$counter" ]]; then
     echo "Version '$version' does not match the lux counter $counter in gradle.properties (kilo.lux.version). Bump the property or drop the explicit number." >&2
+    exit 1
+  fi
+fi
+
+# Version gate (locked by user decision): no release candidates pass, and lux test builds
+# must be stamped on a published stable Kilo JetBrains release, so Deluxe artifacts never
+# carry an RC/pre-release base.
+if [[ "$version" =~ -rc\. ]]; then
+  echo "Version gate: RC versions (x.y.z-rc.n) are not allowed. Pass a stable x.y.z (optionally -lux)." >&2
+  exit 1
+fi
+
+if [[ "$version" == *-lux* ]]; then
+  base="${version%%-lux*}"
+  stable=""
+  if git -C "$plugin" tag --list --format='%(refname:short)' 'jetbrains/v*' | grep -qx "jetbrains/v$base"; then
+    stable="local"
+  else
+    for remote in origin upstream; do
+      if git -C "$plugin" ls-remote --tags "$remote" "refs/tags/jetbrains/v$base" 2>/dev/null | grep -qF "refs/tags/jetbrains/v$base"; then
+        stable="$remote"
+        break
+      fi
+    done
+  fi
+  if [[ -z "$stable" ]]; then
+    echo "Version gate: base $base is not a published stable Kilo JetBrains release (no jetbrains/v$base tag found locally or on origin/upstream)." >&2
+    echo "Run 'git fetch --tags' or pass the latest stable base (see: git tag --list 'jetbrains/v*')." >&2
     exit 1
   fi
 fi

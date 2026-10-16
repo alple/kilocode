@@ -4,12 +4,15 @@ import ai.kilocode.client.KiloNotifications
 import ai.kilocode.client.actions.reloadCoreSettings
 import ai.kilocode.client.app.KiloAppService
 import ai.kilocode.client.app.KiloWorkspaceService
+import ai.kilocode.client.deluxe.KiloParameterStore
 import ai.kilocode.client.plugin.KiloBundle
 import ai.kilocode.client.plugin.KiloPluginSettings
 import ai.kilocode.client.session.controller.key
+import ai.kilocode.client.session.controller.modelSelection
 import ai.kilocode.client.session.controller.resolveSessionAgent
 import ai.kilocode.client.session.controller.resolveSessionDefaultModel
 import ai.kilocode.client.session.controller.resolveSessionModel
+import ai.kilocode.client.session.controller.strongestVariant
 import ai.kilocode.client.session.ui.ReasoningPicker
 import ai.kilocode.client.session.ui.mode.modeItems
 import ai.kilocode.client.session.ui.model.ModelPicker
@@ -84,8 +87,9 @@ interface NewWorktreeHandle {
  *
  * The dialog performs no worktree work itself — it records the confirmed [result] and closes; the
  * panel then drives the controller, so no view switch or worktree work runs while the modal dialog
- * still owns focus. Mode, model, and reasoning selections are persisted the same way the chat prompt
- * does, so the freshly-started session inherits them.
+ * still owns focus. Picks made in its own pickers are recorded into the project store
+ * ([KiloParameterStore]) when the create is confirmed; every other value keeps following the CLI
+ * config, and the machine-global model.json is never written.
  */
 internal class NewWorktreeDialog(
     parent: Component,
@@ -99,6 +103,7 @@ internal class NewWorktreeDialog(
     private val origin: String? = null,
     private val app: KiloAppService = service(),
     private val workspaces: KiloWorkspaceService = service(),
+    private val store: KiloParameterStore = project.service(),
 ) : DialogWrapper(parent, false), NewWorktreeHandle {
 
     private val scope = CoroutineScope(SupervisorJob() + Dispatchers.Default)
@@ -137,6 +142,13 @@ internal class NewWorktreeDialog(
 
     /** The agent (mode) for the new session; model selections persist against it. */
     private var agent: String? = null
+
+    // Picks made in this dialog's own pickers. They are recorded into the project store when the
+    // create is confirmed — the moment the session they configure actually starts — and never
+    // touch the machine-global model.json.
+    private var agentPicked = false
+    private var modelPicked = false
+    private var variantPicked = false
 
     /** The currently displayed model key, used to key the reasoning selection. */
     private var modelKey: String? = null
@@ -274,13 +286,14 @@ internal class NewWorktreeDialog(
         prompt.model.onFavoriteToggle = { item -> app.toggleModelFavorite(item.provider, item.id) }
         prompt.model.onSelect = { item ->
             modelKey = item.key
-            agent?.let { app.selectModel(it, item.provider, item.id) }
+            modelPicked = true
+            variantPicked = false
             syncReasoning(item)
             prompt.setAttachmentEnabled(item.attachment)
         }
         prompt.reasoning.onSelect = { item ->
             variant = item.id
-            modelKey?.let { app.selectVariant(it, item.id) }
+            variantPicked = true
         }
     }
 
@@ -300,7 +313,7 @@ internal class NewWorktreeDialog(
     private fun applyModels(ws: ModelsWorkspaceDto) {
         workspace = ws
         items = modelItems(ws.providers)
-        agent = resolveSessionAgent(ws.agents, KiloPluginSettings.getAgent())
+        agent = resolveSessionAgent(ws.agents, store.agent())
         prompt.mode.setItems(modeItems(ws.agents?.agents), agent)
         if (items.isEmpty()) {
             prompt.setReady(true)
@@ -311,10 +324,13 @@ internal class NewWorktreeDialog(
     }
 
     private fun selectAgent(id: String) {
-        // The picked agent travels with the initial prompt (see submitCreate), so the dialog no
-        // longer writes default_agent to the global config here — doing so changed the mode for
-        // every other workspace and raced the new session's own model load.
+        // The picked agent travels with the initial prompt (see submitCreate) and is recorded into
+        // the project store at create time; nothing is written to the CLI's global config — doing
+        // so changed the mode for every other workspace and raced the new session's own model load.
         agent = id
+        agentPicked = true
+        modelPicked = false
+        variantPicked = false
         syncSelection()
     }
 
@@ -322,21 +338,21 @@ internal class NewWorktreeDialog(
         val ws = workspace ?: return
         val first = items.firstOrNull() ?: return
         val id = agent
-        val current = if (id == null) {
-            first
-        } else {
-            val state = app.models.value
-            val cfg = app.state.value
-            val fallback = resolveSessionDefaultModel(
-                providers = ws.providers,
-                agent = id,
-                state = state,
-                config = cfg.config,
-                ready = cfg.status == KiloAppStatusDto.READY,
-                first = ModelSelectionDto(first.provider, first.id),
-            )
-            val selection = resolveSessionModel(ws.providers, id, state, cfg.config, fallback)
-            items.firstOrNull { it.key == selection?.key } ?: first
+        val current = when {
+            modelPicked -> items.firstOrNull { it.key == modelKey } ?: first
+            id == null -> first
+            else -> {
+                val cfg = app.state.value
+                val fallback = resolveSessionDefaultModel(
+                    providers = ws.providers,
+                    agent = id,
+                    config = cfg.config,
+                    ready = cfg.status == KiloAppStatusDto.READY,
+                    first = ModelSelectionDto(first.provider, first.id),
+                )
+                val selection = resolveSessionModel(ws.providers, id, storedModel(id), cfg.config, fallback)
+                items.firstOrNull { it.key == selection?.key } ?: first
+            }
         }
         prompt.model.setItems(items, current.key)
         modelKey = current.key
@@ -344,9 +360,14 @@ internal class NewWorktreeDialog(
         prompt.setAttachmentEnabled(current.attachment)
     }
 
+    /** The project store's per-agent model pick, or null when never picked in this project. */
+    private fun storedModel(agent: String): ModelSelectionDto? = store.model(agent)?.let(::modelSelection)
+
     private fun syncReasoning(item: ModelPicker.Item) {
-        val saved = app.models.value.variant[item.key]?.takeIf { it in item.variants }
-        variant = saved ?: item.variants.firstOrNull()
+        if (!variantPicked) {
+            val saved = agent?.let { store.variant("$it/${item.key}") }?.takeIf { it in item.variants }
+            variant = saved ?: strongestVariant(item.variants)
+        }
         prompt.reasoning.setItems(
             item.variants.map { ReasoningPicker.Item(it, variantTitle(it)) },
             variant,
@@ -369,8 +390,23 @@ internal class NewWorktreeDialog(
         val resolved = explicit.ifEmpty { name.text.trim() }.ifEmpty { suggestedName }
         val target = base.resolve()
         if (!validBase(target)) return
+        rememberPicks()
         plan = NewWorktreePlan.Create(resolved, target, pending(text))
         close(OK_EXIT_CODE)
+    }
+
+    /**
+     * Records the dialog's explicit picks into the project store at create time — the moment the
+     * session they configure starts. Fields the user never touched (computed defaults) are left
+     * out, so they keep following the CLI config instead of freezing whatever was computed here.
+     */
+    private fun rememberPicks() {
+        val id = agent
+        if (agentPicked && id != null) store.setAgent(id)
+        if (id == null) return
+        val item = items.firstOrNull { it.key == modelKey } ?: return
+        if (modelPicked) store.setModel(id, item.provider, item.id)
+        if (variantPicked) variant?.let { store.setVariant("$id/${item.key}", it) }
     }
 
     private fun submitPr() {

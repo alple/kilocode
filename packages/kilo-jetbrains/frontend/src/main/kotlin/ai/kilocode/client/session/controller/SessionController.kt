@@ -4,6 +4,7 @@ import ai.kilocode.client.KiloNotifications
 import ai.kilocode.client.app.KiloAppService
 import ai.kilocode.client.app.KiloSessionService
 import ai.kilocode.client.app.Workspace
+import ai.kilocode.client.deluxe.KiloParameterStore
 import ai.kilocode.client.plugin.KiloBundle
 import ai.kilocode.client.session.background.BackgroundAgents
 import ai.kilocode.client.session.model.AgentItem
@@ -98,6 +99,7 @@ class SessionController(
   private val sessions: KiloSessionService,
   private val workspace: Workspace,
   private val app: KiloAppService,
+  private val store: KiloParameterStore,
   private val cs: CoroutineScope,
   private val comp: Component? = null,
   private val flushMs: Long = EVENT_FLUSH_MS,
@@ -211,6 +213,11 @@ class SessionController(
     private var prefVariantKey: String? = null
     private var prefVariant: String? = null
     private var modelTime: Double? = null
+    // Picks made in this session's own pickers. A new session's first prompt send records them
+    // into the project store; mid-session switches and the reset button never write it.
+    private var pickedAgent = false
+    private var pickedModel = false
+    private var pickedVariant = false
     // A Stop this UI asked for, so the abort it produces reads as "Stopped" rather than a failure.
     // Reset on every turn open: the flag describes one cancellation, not the session.
     private var stopRequested = false
@@ -306,6 +313,7 @@ class SessionController(
         val start = sid ?: ref?.key ?: "pending"
         val exists = sid != null
         val dto = promptDto(text, files, editorContext, select)
+        if (sid == null && ref == null) recordPicks(dto)
         val props = promptProps(files)
         LOG.debug { "${ChatLogSummary.sid(start)} ${ChatLogSummary.prompt(dto)} ${ChatLogSummary.dir(directory)}" }
         dispatch(Dispatch("prompt", "user", text, props, start, exists)) { id ->
@@ -318,6 +326,7 @@ class SessionController(
         val start = sid ?: ref?.key ?: "pending"
         val exists = sid != null
         val dto = promptDto("", files)
+        if (sid == null && ref == null) recordPicks(dto)
         val props = promptProps(files)
         LOG.debug { "${ChatLogSummary.sid(start)} kind=command command=$command args=${args.length} ${ChatLogSummary.dir(directory)}" }
         dispatch(Dispatch("command", "command", args, props, start, exists)) { id ->
@@ -800,11 +809,11 @@ class SessionController(
     /**
      * Switch this session's mode.
      *
-     * Stays entirely client-side. The pick lives on [SessionModel.agent] for this session and in
-     * [KiloPluginSettings] as the mode the next new session opens with, and it reaches the CLI only
-     * as [PromptDto.agent] on each turn. It must never be written to the CLI's global config: the
-     * CLI disposes every instance it holds when that file changes, which cancels every running turn
-     * in every worktree. `NewWorktreeDialog` reached the same conclusion for its own picker.
+     * Stays entirely client-side. The pick lives on [SessionModel.agent] for this session, travels
+     * to the CLI only as [PromptDto.agent] on each turn, and becomes the project's remembered mode
+     * when this new session's first prompt goes out — never written to the CLI's global config,
+     * which would make the CLI dispose every instance it held and cancel every running turn in
+     * every worktree. `NewWorktreeDialog` reached the same conclusion for its own picker.
      */
     fun selectAgent(name: String) {
         assertEdt()
@@ -816,7 +825,9 @@ class SessionController(
         prefOverride = false
         prefVariantKey = null
         prefVariant = null
-        KiloPluginSettings.setAgent(name)
+        pickedAgent = true
+        pickedModel = false
+        pickedVariant = false
         fire(SessionControllerEvent.WorkspaceReady) {
             model.agent = name
             syncModelSelection()
@@ -836,6 +847,8 @@ class SessionController(
         prefOverride = true
         prefVariantKey = null
         prefVariant = null
+        pickedModel = true
+        pickedVariant = false
         fire(SessionControllerEvent.WorkspaceReady) {
             selectResolvedModel(key)
             model.modelOverride = model.defaultModel != model.model
@@ -849,6 +862,8 @@ class SessionController(
         LOG.debug { "${ChatLogSummary.sid(sid ?: ref?.key ?: "pending")} kind=config model-reset agent=$agent" }
         prefVariantKey = null
         prefVariant = null
+        pickedModel = false
+        pickedVariant = false
         val auto = resolvedDefaultModel(agent)?.key
         prefModel = auto
         prefAgent = agent
@@ -867,6 +882,7 @@ class SessionController(
         LOG.debug { "${ChatLogSummary.sid(sid ?: ref?.key ?: "pending")} kind=config variant=$key/$value" }
         prefVariantKey = key
         prefVariant = value
+        pickedVariant = true
         model.variant = value
         capture("Reasoning Variant Selected", sessionProps() + mapOf("model" to key, "variant" to value))
     }
@@ -877,7 +893,8 @@ class SessionController(
      * the first prompt alone only affects that one turn; setting it as the session's preferred
      * selection makes the pickers and every later turn use it too, and survives the later
      * workspace-ready model resolution because [prefAgent] / [prefModel] / [prefVariant] win in
-     * [syncModelSelection].
+     * [syncModelSelection]. The dialog already recorded its explicit picks into the project store
+     * when it created the session, so this only seeds the session — it never writes the store.
      */
     fun applySelection(select: PromptSelection) {
         assertEdt()
@@ -2362,20 +2379,53 @@ class SessionController(
     private fun syncModelSelection() {
         val agent = model.agent ?: return
         val providers = model.workspace.providers
-        val state = app.models.value
         val cfg = model.app.config
         val auto = resolvedDefaultModel(agent)?.key
         val preferred = messageSelection(agent)
         val selected = preferred?.key ?: resolveSessionModel(
             providers = providers,
             agent = agent,
-            state = state,
+            store = storedModel(agent),
             config = cfg,
             default = auto?.let(::modelSelection),
         )?.key
         model.defaultModel = auto
         selectResolvedModel(selected)
         model.modelOverride = (preferred == null || prefOverride) && selected != auto
+        pinResolved(agent, selected)
+    }
+
+    /**
+     * Turns a blank session's first completed resolution into its pin, so later background ticks
+     * (app state, model-state reload, config patches) re-resolve to the same values instead of
+     * drifting with the store or config. Explicit picks overwrite the pin, and history-derived
+     * values overwrite it for loaded sessions ([syncHistoryAgent], [syncMessagePrefs]).
+     */
+    private fun pinResolved(agent: String, selected: String?) {
+        if (selected == null || prefModel != null) return
+        prefModel = selected
+        prefAgent = agent
+        prefVariantKey = selected
+        prefVariant = model.variant
+    }
+
+    /** The project store's per-agent model pick, or null when never picked in this project. */
+    private fun storedModel(agent: String): ModelSelectionDto? = store.model(agent)?.let(::modelSelection)
+
+    /**
+     * Records a new session's explicit picks into the project store. Only a session that actually
+     * starts writes: the values recorded are the ones this prompt carries. Picking without
+     * sending, mid-session switches, and the reset button never reach it.
+     */
+    private fun recordPicks(dto: PromptDto) {
+        val agent = dto.agent
+        val provider = dto.providerID
+        val modelId = dto.modelID
+        if (pickedAgent && agent != null) store.setAgent(agent)
+        if (agent != null && provider != null && modelId != null) {
+            if (pickedModel) store.setModel(agent, provider, modelId)
+            if (pickedVariant) dto.variant?.let { store.setVariant("$agent/$provider/$modelId", it) }
+        }
     }
 
     private fun resolvedDefaultModel(agent: String): ModelSelectionDto? {
@@ -2383,7 +2433,6 @@ class SessionController(
         return resolveSessionDefaultModel(
             providers = model.workspace.providers,
             agent = agent,
-            state = app.models.value,
             config = model.app.config,
             ready = model.app.status == KiloAppStatusDto.READY,
             first = first,
@@ -2394,11 +2443,12 @@ class SessionController(
         model.model = key
         val item = key?.let(::item)
         model.variants = item?.variants ?: emptyList()
+        val agent = model.agent
         val pref = prefVariant?.takeIf { prefVariantKey == key }
-        val saved = key?.let { app.models.value.variant[it] }
+        val saved = if (agent != null && key != null) store.variant("$agent/$key") else null
         model.variant = pref?.takeIf { it in model.variants }
             ?: saved?.takeIf { it in model.variants }
-            ?: model.variants.firstOrNull()
+            ?: strongestVariant(model.variants)
         model.refreshHeader()
     }
 
@@ -2430,13 +2480,13 @@ class SessionController(
     /**
      * Mode a session with no history of its own opens in.
      *
-     * The last mode the picker selected wins, so switching mode still sticks across new sessions and
-     * IDE restarts without the CLI's global config — the write that used to provide this also tore
-     * down every instance the CLI held. Falls back to the CLI default when the remembered mode is
-     * gone (renamed, hidden, or removed from a different config).
+     * The project store's remembered mode wins, so switching mode still sticks across new sessions
+     * in the same project and IDE restarts without the CLI's global config — the write that used to
+     * provide this also tore down every instance the CLI held. Falls back to the CLI default when
+     * the remembered mode is gone (renamed, hidden, or removed from a different config).
      */
     private fun seedAgent(agents: AgentsDto?): String? {
-        return resolveSessionAgent(agents, KiloPluginSettings.getAgent())
+        return resolveSessionAgent(agents, store.agent())
     }
 
     private fun syncHistoryAgent(items: List<MessageWithPartsDto>) {

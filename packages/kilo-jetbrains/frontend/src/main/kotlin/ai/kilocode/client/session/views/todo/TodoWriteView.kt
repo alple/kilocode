@@ -65,8 +65,9 @@ class TodoWriteView(
     override fun applyStyle(style: SessionEditorStyle) {
         this.style = style
         var changed = false
-        changed = setFont(parts.title, style.boldEditorFont) || changed
-        changed = setFont(parts.sub, style.transcriptFont) || changed
+        // Header chrome follows the Tool output & code offset (KILO-15.4, revising KILO-15.1).
+        changed = setFont(parts.title, style.toolTitleFont) || changed
+        changed = setFont(parts.sub, style.toolSubtitleFont) || changed
         parts.list.applyStyle(style)
         changed = footer.applyStyle(style) || changed
         if (changed) refresh()

@@ -194,6 +194,7 @@ class SessionUi(
         sessions = sessions,
         workspace = workspace,
         app = app,
+        store = project.service(),
         cs = cs,
         comp = this,
         flushMs = flushMs,

@@ -9,6 +9,7 @@ import com.intellij.testFramework.fixtures.BasePlatformTestCase
 import com.intellij.ui.TitledSeparator
 import com.intellij.ui.components.JBLabel
 import java.awt.Container
+import javax.swing.JButton
 import javax.swing.JComponent
 import javax.swing.JSpinner
 
@@ -64,6 +65,52 @@ class AppearanceConfigurableTest : BasePlatformTestCase() {
 
         assertEquals(1.5, spinners(root)[1].value)
         assertFalse(cfg.isModified)
+    }
+
+    fun `test reset icons start disabled and enable only for non-zero offsets`() = edt {
+        val cfg = configurable()
+        val root = cfg.createComponent() as Container
+        val resets = resetButtons(root)
+
+        assertEquals(4, resets.size)
+        assertTrue(resets.none { it.isEnabled })
+
+        spinners(root)[0].value = 0.5
+
+        val response = resets.first { it.name == "kilo.appearance.reset.response" }
+        assertTrue(response.isEnabled)
+        assertTrue(resets.filter { it !== response }.none { it.isEnabled })
+    }
+
+    fun `test reset icon zeroes its group and refreshes the preview`() = edt {
+        val cfg = configurable()
+        val root = cfg.createComponent() as Container
+        val response = previewLabels(root)
+            .first { it.text == KiloBundle.message("settings.appearance.preview.response") }
+        val baseline = response.font.size2D
+
+        spinners(root)[0].value = 2.0
+        assertTrue("response sample should grow from $baseline", response.font.size2D > baseline)
+
+        resetButtons(root).first { it.name == "kilo.appearance.reset.response" }.doClick()
+
+        assertEquals(0.0, spinners(root)[0].value)
+        assertEquals(baseline.toDouble(), response.font.size2D.toDouble(), 0.001)
+        assertFalse(cfg.isModified)
+    }
+
+    fun `test reset icon touches only its own group`() = edt {
+        val cfg = configurable()
+        val root = cfg.createComponent() as Container
+
+        spinners(root)[0].value = 2.0
+        spinners(root)[2].value = -1.0
+
+        resetButtons(root).first { it.name == "kilo.appearance.reset.response" }.doClick()
+
+        assertEquals(0.0, spinners(root)[0].value)
+        assertEquals(-1.0, spinners(root)[2].value)
+        assertTrue(cfg.isModified)
     }
 
     fun `test apply persists offsets and notifies listeners`() = edt {
@@ -132,6 +179,9 @@ class AppearanceConfigurableTest : BasePlatformTestCase() {
     private fun combos(root: Container): List<ComboBox<*>> = collect(root) { it as? ComboBox<*> }
 
     private fun spinners(root: Container): List<JSpinner> = collect(root) { it as? JSpinner }
+
+    private fun resetButtons(root: Container): List<JButton> =
+        collect(root) { (it as? JButton)?.takeIf { b -> b.name?.startsWith("kilo.appearance.reset.") == true } }
 
     private fun separators(root: Container): List<TitledSeparator> = collect(root) { it as? TitledSeparator }
 

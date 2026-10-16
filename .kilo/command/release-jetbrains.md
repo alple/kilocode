@@ -2,7 +2,7 @@
 description: Release the Kilo JetBrains plugin (resolve version, verify CLI pin, prepare, changelog, publish)
 ---
 
-Release the Kilo JetBrains plugin for version spec: $1 (default to `next rc` if empty).
+Release the Kilo JetBrains plugin for version spec: $1 (default to `next stable` if empty — the user wants stable releases by default, never an RC unless they explicitly ask for one). Note: `next stable` follows upstream's resolution — when the latest JetBrains tag is an RC it resolves to that RC's base version, which is not yet a published stable at that moment (the published stable is older, e.g. 7.1.9 while 7.1.10-rc.3 is newest) — so always show and confirm the resolved version, as required below. Local lux test builds are separate: `script/build-version.sh` gates them to the latest published stable base and rejects RC versions outright.
 
 This command drives the existing JetBrains release workflows. It must not move, delete, or recreate JetBrains release tags. It must always confirm the resolved version with the user before dispatching the prepare workflow because the prepare workflow creates an immutable `jetbrains/v<version>` tag.
 

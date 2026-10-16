@@ -4,7 +4,6 @@ import ai.kilocode.rpc.dto.ConfigDto
 import ai.kilocode.rpc.dto.KiloAppStateDto
 import ai.kilocode.rpc.dto.KiloAppStatusDto
 import ai.kilocode.rpc.dto.ModelDto
-import ai.kilocode.rpc.dto.ModelStateDto
 import ai.kilocode.rpc.dto.ProviderDto
 
 class SessionCreationTest : SessionControllerTestBase() {
@@ -85,7 +84,7 @@ class SessionCreationTest : SessionControllerTestBase() {
     }
 
     fun `test prompt sends selected model agent and variant`() {
-        appRpc.models = ModelStateDto(variant = mapOf("kilo/gpt-5" to "medium"))
+        store.setVariant("code/kilo/gpt-5", "medium")
         appRpc.state.value = KiloAppStateDto(KiloAppStatusDto.READY, config = ConfigDto(model = "kilo/gpt-5"))
         projectRpc.state.value = workspaceReady(
             providers = listOf(

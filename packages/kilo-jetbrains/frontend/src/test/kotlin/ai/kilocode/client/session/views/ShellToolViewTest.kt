@@ -234,13 +234,12 @@ class ShellToolViewTest : BasePlatformTestCase() {
         assertSame(editor, view.codeEditors().single())
         assertEquals(style.editorFont.name, view.commandFont().name)
         assertEquals(style.editorSize, view.commandFont().size)
-        assertEquals(style.transcriptFont.name, view.titleFont().name)
+        assertEquals(style.toolTitleFont, view.titleFont())
         assertTrue(view.titleFont().isBold)
-        assertEquals(style.transcriptFont.name, view.subtitleFont().name)
-        assertEquals(style.transcriptFont.size, view.subtitleFont().size)
+        assertEquals(style.toolSubtitleFont, view.subtitleFont())
         assertFalse(view.subtitleFont().isBold)
         assertEquals(SessionUiStyle.Text.Secondary.foreground().rgb, view.subtitleForeground().rgb)
-        assertTrue(view.stateFont().size < style.editorSize)
+        assertEquals(style.toolSubtitleFont, view.stateFont())
     }
 
     fun `test selection registers shell markdown editors`() {

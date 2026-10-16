@@ -7,6 +7,7 @@ import {
 } from "@modelcontextprotocol/sdk/types.js"
 import { dynamicTool, jsonSchema, type JSONSchema7, type Tool } from "ai"
 import { Effect } from "effect"
+import { validator } from "@/kilocode/mcp/input-validation" // kilocode_change
 
 const DEFAULT_TIMEOUT = 30_000
 const MAX_LIST_PAGES = 1_000
@@ -49,7 +50,10 @@ export function convertTool(mcpTool: MCPToolDef, client: Client, timeout?: numbe
 
   return dynamicTool({
     description: mcpTool.description ?? "",
-    inputSchema: jsonSchema(inputSchema),
+    // kilocode_change start - validate MCP tool inputs against the declared schema before execution;
+    // incomplete model-emitted arguments must fail loudly instead of silently executing
+    inputSchema: jsonSchema(inputSchema, { validate: validator(mcpTool.name, inputSchema) }),
+    // kilocode_change end
     execute: async (args: unknown, options) => {
       const result = await client.callTool(
         {

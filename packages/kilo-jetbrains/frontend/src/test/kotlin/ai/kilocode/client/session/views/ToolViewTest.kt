@@ -289,10 +289,10 @@ class ToolViewTest : BasePlatformTestCase() {
         val style = SessionEditorStyle.current()
         val view = track(ToolView(tool("p1", "bash", ToolExecState.COMPLETED).also { it.output = "done" }))
 
-        assertEditorFont(view.titleFont(), style)
+        assertToolTitleFont(view.titleFont(), style)
         assertTrue(view.titleFont().isBold)
-        assertSmallEditorFont(view.subtitleFont(), style)
-        assertSmallEditorFont(view.stateFont(), style)
+        assertToolSubtitleFont(view.subtitleFont(), style)
+        assertToolSubtitleFont(view.stateFont(), style)
     }
 
     fun `test tool header uses standard layout gap`() {
@@ -311,10 +311,10 @@ class ToolViewTest : BasePlatformTestCase() {
 
         assertSame(editor, view.bodyEditor())
         assertCodeFont(view.bodyFont(), style)
-        assertEditorFont(view.titleFont(), style)
+        assertToolTitleFont(view.titleFont(), style)
         assertTrue(view.titleFont().isBold)
-        assertSmallEditorFont(view.subtitleFont(), style)
-        assertSmallEditorFont(view.stateFont(), style)
+        assertToolSubtitleFont(view.subtitleFont(), style)
+        assertToolSubtitleFont(view.stateFont(), style)
     }
 
     fun `test tool controls only include expand arrow`() {
@@ -474,9 +474,8 @@ class ToolViewTest : BasePlatformTestCase() {
         return view
     }
 
-    private fun assertEditorFont(font: java.awt.Font, style: SessionEditorStyle) {
-        assertEquals(style.transcriptFont.name, font.name)
-        assertEquals(style.editorSize, font.size)
+    private fun assertToolTitleFont(font: java.awt.Font, style: SessionEditorStyle) {
+        assertEquals(style.toolTitleFont, font)
     }
 
     private fun assertCodeFont(font: java.awt.Font, style: SessionEditorStyle) {
@@ -484,9 +483,8 @@ class ToolViewTest : BasePlatformTestCase() {
         assertEquals(style.editorSize, font.size)
     }
 
-    private fun assertSmallEditorFont(font: java.awt.Font, style: SessionEditorStyle) {
-        assertEquals(style.smallEditorFont.name, font.name)
-        assertTrue(font.size < style.editorSize)
+    private fun assertToolSubtitleFont(font: java.awt.Font, style: SessionEditorStyle) {
+        assertEquals(style.toolSubtitleFont, font)
     }
 
     private fun headerGap(view: ToolView): Int = (header(view).layout as BorderLayout).hgap
